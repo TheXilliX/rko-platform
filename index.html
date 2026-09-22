@@ -78,9 +78,9 @@
         <main class="workspace-panel learning-shell is-current" id="learningPanel">
           <h1 class="display-title"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
 
-          <div class="empty-course">
+          <div class="course-browser" id="courseBrowser">
             <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
-            <div class="course-line" aria-hidden="true"></div>
+            <div class="course-list" id="courseList"></div>
           </div>
 
           <p class="signature">[ Влад 2Hard ]</p>
@@ -95,9 +95,55 @@
             <button class="admin-tab" type="button" data-tab="accounts">АККАУНТЫ</button>
             <button class="admin-tab" type="button" data-tab="settings">НАСТРОЙКИ</button>
           </nav>
+
+          <div class="admin-content" id="adminContent">
+            <section class="admin-view structure-view is-current" data-admin-view="structure">
+              <div class="structure-heading">
+                <h2>СТРУКТУРА КУРСА</h2>
+                <button class="add-button" id="addButton" type="button">+ ДОБАВИТЬ</button>
+              </div>
+
+              <div class="structure-table" id="structureTable">
+                <div class="structure-table-head" aria-hidden="true">
+                  <span>НАЗВАНИЕ</span>
+                  <span>СТАТУС</span>
+                  <span>ВИДИМОСТЬ</span>
+                  <span>ДЕЙСТВИЯ</span>
+                </div>
+                <div class="structure-rows" id="structureRows"></div>
+              </div>
+
+              <div class="structure-actions">
+                <button class="cancel-button" id="cancelStructure" type="button">ОТМЕНИТЬ</button>
+                <button class="save-button" id="saveStructure" type="button">СОХРАНИТЬ</button>
+              </div>
+            </section>
+
+            <section class="admin-view placeholder-view" data-admin-view="accounts">
+              <h2>АККАУНТЫ</h2>
+            </section>
+
+            <section class="admin-view placeholder-view" data-admin-view="settings">
+              <h2>НАСТРОЙКИ</h2>
+            </section>
+          </div>
         </main>
       </div>
     </section>
+
+    <div class="notice" id="notice" role="status" aria-live="polite"></div>
+
+    <div class="confirm-layer" id="confirmLayer" aria-hidden="true">
+      <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <p class="confirm-kicker">УДАЛЕНИЕ</p>
+        <h2 id="confirmTitle">УДАЛИТЬ ЭЛЕМЕНТ?</h2>
+        <p class="confirm-copy" id="confirmCopy"></p>
+        <div class="confirm-actions">
+          <button class="confirm-no" id="confirmNo" type="button">НЕТ</button>
+          <button class="confirm-yes" id="confirmYes" type="button">ДА</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./src/scripts/app.js"></script>
