@@ -146,9 +146,11 @@ button {
   transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
 }
 
-.auth-form.is-authenticated {
+.auth-form.is-authenticated .auth-title,
+.auth-form.is-authenticated .auth-fields,
+.auth-form.is-authenticated .submit-button {
   opacity: 0;
-  filter: blur(16px);
+  filter: blur(10px);
   transform: scale(0.985);
   pointer-events: none;
 }
@@ -175,6 +177,7 @@ button {
 .auth-fields {
   display: grid;
   gap: 20px;
+  transition: opacity 0.45s ease, filter 0.45s ease, transform 0.45s ease;
 }
 
 .field {
@@ -257,6 +260,7 @@ button {
 }
 
 .submit-button {
+  grid-area: 1 / 1;
   padding: 8px 12px;
   border: 0;
   background: transparent;
@@ -280,8 +284,10 @@ button {
 }
 
 .auth-status {
+  grid-area: 1 / 1;
+  align-self: center;
   min-height: 1.2em;
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 0.9rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -324,8 +330,8 @@ body.error-flash {
 
 .welcome-page {
   display: grid;
-  align-content: center;
-  justify-items: center;
+  place-content: center;
+  place-items: center;
   padding: 32px;
   text-align: center;
 }
@@ -349,7 +355,7 @@ body.error-flash {
 }
 
 .dashboard-page {
-  padding: max(28px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right)) max(30px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
+  padding: max(50px, env(safe-area-inset-top)) max(5.2vw, env(safe-area-inset-right)) max(44px, env(safe-area-inset-bottom)) max(4.1vw, env(safe-area-inset-left));
 }
 
 .topbar {
@@ -388,6 +394,12 @@ body.error-flash {
 
 .admin-mark {
   color: var(--green);
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  cursor: pointer;
 }
 
 .logout-button {
@@ -398,25 +410,29 @@ body.error-flash {
   font-weight: 900;
   letter-spacing: 0.035em;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.18s ease;
 }
 
-.logout-button:active {
-  transform: scale(0.92);
+.nav-action {
+  transform-origin: center;
+  transition: color 0.35s ease, opacity 0.35s ease, transform 0.21s cubic-bezier(.22, 1, .36, 1), filter 0.35s ease;
+}
+
+.nav-action.is-pressed {
+  transform: scale(1.15);
 }
 
 .learning-shell {
-  display: grid;
-  width: min(100%, 1280px);
-  min-height: calc(100svh - 96px);
+  position: relative;
+  display: block;
+  width: min(88%, 1355px);
+  height: calc(100svh - 104px);
   margin: 0 auto;
-  align-content: center;
-  grid-template-rows: auto auto auto;
+  padding-top: clamp(88px, 10.5vh, 112px);
 }
 
 .display-title {
   margin: 0;
-  font-size: clamp(4.5rem, 10vw, 9.5rem);
+  font-size: clamp(5rem, 7.35vw, 7.7rem);
   font-weight: 900;
   letter-spacing: -0.075em;
   line-height: 0.82;
@@ -429,7 +445,7 @@ body.error-flash {
 }
 
 .empty-course {
-  margin-top: clamp(70px, 10vh, 120px);
+  margin-top: clamp(48px, 6.2vh, 64px);
 }
 
 .course-instruction {
@@ -448,13 +464,77 @@ body.error-flash {
 }
 
 .signature {
-  align-self: end;
-  margin: clamp(82px, 12vh, 140px) 0 0;
+  position: absolute;
+  bottom: clamp(24px, 5.5vh, 58px);
+  left: 0;
+  margin: 0;
   color: var(--text-soft);
   font-family: "DM Mono", ui-monospace, monospace;
   font-size: clamp(0.72rem, 0.9vw, 0.84rem);
   font-weight: 500;
   letter-spacing: 0.08em;
+}
+
+.admin-page {
+  padding: max(50px, env(safe-area-inset-top)) max(5.2vw, env(safe-area-inset-right)) max(44px, env(safe-area-inset-bottom)) max(4.1vw, env(safe-area-inset-left));
+}
+
+.admin-mark-active {
+  display: inline-flex;
+  color: var(--amber);
+}
+
+.admin-shell {
+  width: min(78%, 1188px);
+  margin: 0 auto;
+  padding-top: clamp(124px, 15vh, 150px);
+}
+
+.admin-title {
+  margin: 0;
+  font-size: clamp(5rem, 7.25vw, 7.6rem);
+  font-weight: 900;
+  letter-spacing: -0.075em;
+  line-height: 0.82;
+}
+
+.admin-initial {
+  display: inline-block;
+  font-size: 1.22em;
+  margin-right: -0.02em;
+}
+
+.admin-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: clamp(58px, 7.5vw, 122px);
+  margin-top: clamp(60px, 7vh, 76px);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-tab {
+  position: relative;
+  padding: 0 26px 13px;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: clamp(1rem, 1.35vw, 1.28rem);
+  font-weight: 900;
+  letter-spacing: 0.025em;
+}
+
+.admin-tab.is-current {
+  color: var(--text-primary);
+}
+
+.admin-tab.is-current::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--text-primary);
+  content: "";
 }
 
 .visually-hidden {
@@ -509,7 +589,8 @@ body.error-flash {
     padding: 30px 24px 24px;
   }
 
-  .dashboard-page {
+  .dashboard-page,
+  .admin-page {
     padding: max(22px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   }
 
@@ -524,9 +605,9 @@ body.error-flash {
   }
 
   .learning-shell {
-    min-height: calc(100svh - 82px);
-    padding-top: 8vh;
-    align-content: start;
+    width: 100%;
+    height: calc(100svh - 66px);
+    padding-top: clamp(72px, 10vh, 104px);
   }
 
   .display-title {
@@ -534,7 +615,7 @@ body.error-flash {
   }
 
   .empty-course {
-    margin-top: 13vh;
+    margin-top: clamp(70px, 11vh, 112px);
   }
 
   .course-instruction {
@@ -544,7 +625,33 @@ body.error-flash {
   }
 
   .signature {
-    margin-top: 22vh;
+    bottom: clamp(22px, 5vh, 48px);
+  }
+
+  .admin-shell {
+    width: 100%;
+    padding-top: clamp(88px, 13vh, 128px);
+  }
+
+  .admin-title {
+    font-size: clamp(3.4rem, 16vw, 5.6rem);
+  }
+
+  .admin-tabs {
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: clamp(52px, 8vh, 78px);
+  }
+
+  .admin-tab {
+    padding: 16px 4px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+
+  .admin-tab.is-current::after {
+    right: auto;
+    width: 112px;
   }
 }
 
@@ -561,17 +668,13 @@ body.error-flash {
   }
 
   .learning-shell {
-    align-content: start;
-    padding-top: 12vh;
+    padding-top: 9vh;
   }
 
   .empty-course {
     margin-top: 10vh;
   }
 
-  .signature {
-    margin-top: 14vh;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
