@@ -97,6 +97,7 @@ button {
 }
 
 .splash.is-gone {
+  z-index: -1;
   opacity: 0;
   visibility: hidden;
 }
@@ -131,19 +132,30 @@ button {
 }
 
 .auth-page {
+  z-index: 5;
   display: grid;
   place-items: center;
   padding: max(74px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
 .auth-form {
+  position: relative;
+  z-index: 2;
   display: grid;
   width: min(100%, 430px);
   min-height: 410px;
   align-content: center;
   gap: 22px;
   padding: 34px 46px 30px;
+  pointer-events: auto;
   transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+
+.auth-page.is-active,
+.auth-page.is-active .auth-fields,
+.auth-page.is-active .field,
+.auth-page.is-active input {
+  pointer-events: auto;
 }
 
 .auth-form.is-authenticated .submit-button {
@@ -191,6 +203,8 @@ button {
 }
 
 .field input {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 50px;
   padding: 0 42px;
@@ -205,6 +219,7 @@ button {
   font-weight: 700;
   letter-spacing: 0.025em;
   text-align: center;
+  touch-action: manipulation;
   transition: border-color 0.2s ease;
 }
 
