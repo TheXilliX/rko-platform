@@ -56,8 +56,10 @@
     </section>
 
     <section class="page welcome-page" id="welcomePage" aria-live="polite">
-      <p class="welcome-kicker" id="welcomeKicker"></p>
-      <h1 class="welcome-title" id="welcomeTitle"></h1>
+      <div class="welcome-content">
+        <p class="welcome-kicker" id="welcomeKicker"></p>
+        <h1 class="welcome-title" id="welcomeTitle"></h1>
+      </div>
     </section>
 
     <section class="page dashboard-page" id="dashboardPage">
@@ -72,39 +74,29 @@
         </div>
       </header>
 
-      <main class="learning-shell">
-        <h1 class="display-title"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
+      <div class="workspace" id="workspace">
+        <main class="workspace-panel learning-shell is-current" id="learningPanel">
+          <h1 class="display-title"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
 
-        <div class="empty-course">
-          <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
-          <div class="course-line" aria-hidden="true"></div>
-        </div>
+          <div class="empty-course">
+            <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
+            <div class="course-line" aria-hidden="true"></div>
+          </div>
 
-        <p class="signature">[ Vlad 2Hard ]</p>
-      </main>
-    </section>
+          <p class="signature">[ Влад 2Hard ]</p>
+        </main>
 
-    <section class="page admin-page" id="adminPage">
-      <header class="topbar admin-topbar">
-        <p class="service-label">[ RKO / АДМИН ]</p>
-        <div class="account-nav" aria-label="Аккаунт администратора">
-          <span id="adminAccountName">ВЛАД</span>
-          <span class="nav-dot" aria-hidden="true"></span>
-          <button class="admin-mark admin-mark-active nav-action" id="adminBackButton" type="button">АДМИН</button>
-          <span class="nav-dot" aria-hidden="true"></span>
-          <button class="logout-button nav-action" id="adminLogoutButton" type="button">ВЫЙТИ</button>
-        </div>
-      </header>
+        <main class="workspace-panel admin-shell" id="adminPanel" aria-hidden="true">
+          <h1 class="display-title"><span class="display-initial">У</span>ПРАВЛЕНИЕ</h1>
 
-      <main class="admin-shell">
-        <h1 class="admin-title"><span class="admin-initial">У</span>ПРАВЛЕНИЕ</h1>
-
-        <nav class="admin-tabs" aria-label="Разделы управления">
-          <button class="admin-tab is-current" type="button">СТРУКТУРА</button>
-          <button class="admin-tab" type="button">АККАУНТЫ</button>
-          <button class="admin-tab" type="button">НАСТРОЙКИ</button>
-        </nav>
-      </main>
+          <nav class="admin-tabs" id="adminTabs" aria-label="Разделы управления">
+            <span class="tab-indicator" id="tabIndicator" aria-hidden="true"></span>
+            <button class="admin-tab is-current" type="button" data-tab="structure">СТРУКТУРА</button>
+            <button class="admin-tab" type="button" data-tab="accounts">АККАУНТЫ</button>
+            <button class="admin-tab" type="button" data-tab="settings">НАСТРОЙКИ</button>
+          </nav>
+        </main>
+      </div>
     </section>
   </div>
 
