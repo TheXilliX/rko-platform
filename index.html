@@ -27,13 +27,13 @@
         <h1 class="auth-title">ВХОД</h1>
 
         <div class="auth-fields">
-          <label class="field">
-            <span class="visually-hidden">Логин</span>
+          <div class="field">
+            <label class="visually-hidden" for="login">Логин</label>
             <input id="login" name="login" type="text" placeholder="ЛОГИН" autocomplete="username" autocapitalize="none" spellcheck="false">
-          </label>
+          </div>
 
-          <label class="field password-field">
-            <span class="visually-hidden">Пароль</span>
+          <div class="field password-field">
+            <label class="visually-hidden" for="password">Пароль</label>
             <input id="password" name="password" type="password" placeholder="ПАРОЛЬ" autocomplete="current-password">
             <button class="eye-button" id="eyeButton" type="button" aria-label="Показать пароль" aria-pressed="false">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -41,7 +41,7 @@
                 <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/>
               </svg>
             </button>
-          </label>
+          </div>
         </div>
 
         <div class="auth-footer">
