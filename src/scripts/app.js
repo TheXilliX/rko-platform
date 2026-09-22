@@ -17,16 +17,21 @@ const accountName = document.querySelector("#accountName");
 const adminMark = document.querySelector("#adminMark");
 const adminDot = document.querySelector("#adminDot");
 const logoutButton = document.querySelector("#logoutButton");
+const adminPage = document.querySelector("#adminPage");
+const adminAccountName = document.querySelector("#adminAccountName");
+const adminBackButton = document.querySelector("#adminBackButton");
+const adminLogoutButton = document.querySelector("#adminLogoutButton");
 
 let introPlayed = false;
 let transitionTimer;
+let currentAccount = null;
 
 function clearTransitionTimer() {
   window.clearTimeout(transitionTimer);
 }
 
 function setPage(activePage) {
-  [authPage, welcomePage, dashboardPage].forEach((page) => {
+  [authPage, welcomePage, dashboardPage, adminPage].forEach((page) => {
     page.classList.toggle("is-active", page === activePage);
   });
 }
@@ -99,16 +104,45 @@ function showWelcome(account) {
       welcomePage.classList.add("is-leaving");
       transitionTimer = window.setTimeout(() => showDashboard(account), 650);
     }, 1150);
-  }, 850);
+  }, 1050);
 }
 
 function showDashboard(account) {
+  currentAccount = account;
   const isAdmin = account.role === "admin";
   roleLabel.textContent = isAdmin ? "[ RKO / АДМИН ]" : "[ RKO / УЧЕНИК ]";
   accountName.textContent = account.name;
   adminMark.classList.toggle("is-visible", isAdmin);
   adminDot.classList.toggle("is-visible", isAdmin);
   setPage(dashboardPage);
+}
+
+function animatePageChange(button, page, callback) {
+  clearTransitionTimer();
+  button.classList.add("is-pressed");
+
+  transitionTimer = window.setTimeout(() => {
+    page.classList.add("is-leaving");
+
+    transitionTimer = window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+      page.classList.remove("is-leaving");
+      callback();
+    }, 520);
+  }, 210);
+}
+
+function showAdminPage() {
+  if (!currentAccount || currentAccount.role !== "admin") return;
+  adminAccountName.textContent = currentAccount.name;
+  setPage(adminPage);
+}
+
+function logoutFrom(button, page) {
+  animatePageChange(button, page, () => {
+    currentAccount = null;
+    showAuth({ skipIntro: true });
+  });
 }
 
 loginInput.addEventListener("input", updateReadyState);
@@ -137,12 +171,16 @@ authForm.addEventListener("submit", (event) => {
   showWelcome(account);
 });
 
-logoutButton.addEventListener("click", () => {
-  dashboardPage.classList.add("is-leaving");
-  transitionTimer = window.setTimeout(() => {
-    dashboardPage.classList.remove("is-leaving");
-    showAuth({ skipIntro: true });
-  }, 500);
+adminMark.addEventListener("click", () => {
+  if (!adminMark.classList.contains("is-visible")) return;
+  animatePageChange(adminMark, dashboardPage, showAdminPage);
 });
+
+adminBackButton.addEventListener("click", () => {
+  animatePageChange(adminBackButton, adminPage, () => showDashboard(currentAccount));
+});
+
+logoutButton.addEventListener("click", () => logoutFrom(logoutButton, dashboardPage));
+adminLogoutButton.addEventListener("click", () => logoutFrom(adminLogoutButton, adminPage));
 
 showAuth();
