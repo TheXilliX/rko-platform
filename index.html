@@ -61,14 +61,14 @@
     </section>
 
     <section class="page dashboard-page" id="dashboardPage">
-      <header class="topbar">
+      <header class="topbar dashboard-topbar">
         <p class="service-label" id="roleLabel">[ RKO / УЧЕНИК ]</p>
         <div class="account-nav" aria-label="Аккаунт">
           <span id="accountName">ВЛАД</span>
           <span class="nav-dot" aria-hidden="true"></span>
-          <span class="admin-mark" id="adminMark">АДМИН</span>
+          <button class="admin-mark nav-action" id="adminMark" type="button">АДМИН</button>
           <span class="nav-dot admin-dot" id="adminDot" aria-hidden="true"></span>
-          <button class="logout-button" id="logoutButton" type="button">ВЫЙТИ</button>
+          <button class="logout-button nav-action" id="logoutButton" type="button">ВЫЙТИ</button>
         </div>
       </header>
 
@@ -80,7 +80,30 @@
           <div class="course-line" aria-hidden="true"></div>
         </div>
 
-        <p class="signature">[ ВЛАД 2HARD ]</p>
+        <p class="signature">[ Vlad 2Hard ]</p>
+      </main>
+    </section>
+
+    <section class="page admin-page" id="adminPage">
+      <header class="topbar admin-topbar">
+        <p class="service-label">[ RKO / АДМИН ]</p>
+        <div class="account-nav" aria-label="Аккаунт администратора">
+          <span id="adminAccountName">ВЛАД</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+          <button class="admin-mark admin-mark-active nav-action" id="adminBackButton" type="button">АДМИН</button>
+          <span class="nav-dot" aria-hidden="true"></span>
+          <button class="logout-button nav-action" id="adminLogoutButton" type="button">ВЫЙТИ</button>
+        </div>
+      </header>
+
+      <main class="admin-shell">
+        <h1 class="admin-title"><span class="admin-initial">У</span>ПРАВЛЕНИЕ</h1>
+
+        <nav class="admin-tabs" aria-label="Разделы управления">
+          <button class="admin-tab is-current" type="button">СТРУКТУРА</button>
+          <button class="admin-tab" type="button">АККАУНТЫ</button>
+          <button class="admin-tab" type="button">НАСТРОЙКИ</button>
+        </nav>
       </main>
     </section>
   </div>
