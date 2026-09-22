@@ -76,12 +76,22 @@
 
       <div class="workspace" id="workspace">
         <main class="workspace-panel learning-shell is-current" id="learningPanel">
-          <h1 class="display-title"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
+          <h1 class="display-title" id="learningTitle"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
 
           <div class="course-browser" id="courseBrowser">
-            <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
+            <div class="course-guide">
+              <button class="course-guide-back" id="courseGuideBack" type="button">← НАЗАД</button>
+              <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
+            </div>
             <div class="course-list" id="courseList"></div>
           </div>
+
+          <article class="lesson-reader" id="lessonReader" aria-hidden="true">
+            <button class="reader-back" id="readerBack" type="button">← К УРОКАМ</button>
+            <p class="reader-path" id="readerPath"></p>
+            <h2 class="reader-title" id="readerTitle"></h2>
+            <div class="reader-content" id="readerContent"></div>
+          </article>
 
           <p class="signature">[ Влад 2Hard ]</p>
         </main>
@@ -131,6 +141,54 @@
       </div>
     </section>
 
+    <section class="page editor-page" id="editorPage" aria-label="Редактор урока">
+      <header class="topbar editor-topbar">
+        <p class="service-label">[ RKO / АДМИН / РЕДАКТОР ]</p>
+        <div class="account-nav" aria-label="Аккаунт">
+          <span>ВЛАД</span><span class="nav-dot" aria-hidden="true"></span>
+          <span class="editor-admin-mark">АДМИН</span><span class="nav-dot" aria-hidden="true"></span>
+          <button class="logout-button nav-action" id="editorLogoutButton" type="button">ВЫЙТИ</button>
+        </div>
+      </header>
+
+      <main class="editor-workspace">
+        <button class="editor-back" id="editorBack" type="button">← К СТРУКТУРЕ</button>
+        <h1 class="editor-title">РЕДАКТОР УРОКА</h1>
+        <p class="editor-path" id="editorPath"></p>
+
+        <div class="editor-layout">
+          <section class="editor-main">
+            <label class="lesson-name-field">
+              <span>НАЗВАНИЕ УРОКА</span>
+              <input id="lessonNameInput" type="text" autocomplete="off">
+            </label>
+            <div class="lesson-blocks" id="lessonBlocks"></div>
+            <button class="add-block-button" id="addBlockButton" type="button">+ ДОБАВИТЬ БЛОК</button>
+          </section>
+
+          <aside class="editor-sidebar">
+            <div class="editor-setting">
+              <span>СОСТОЯНИЕ</span>
+              <strong class="editor-state" id="editorState"><i></i>СОХРАНЕНО</strong>
+            </div>
+            <div class="editor-setting">
+              <span>ВИДИМОСТЬ</span>
+              <button class="setting-select" id="lessonVisibility" type="button">ДЛЯ ВСЕХ <span>⌄</span></button>
+            </div>
+            <label class="editor-setting editor-toggle-setting">
+              <span>РАЗРЕШИТЬ СКАЧИВАНИЕ ВЛОЖЕНИЙ</span>
+              <input id="allowDownloads" type="checkbox">
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+            <div class="editor-actions">
+              <button class="editor-delete" id="deleteLesson" type="button">УДАЛИТЬ</button>
+              <button class="editor-save" id="saveLesson" type="button">СОХРАНИТЬ</button>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </section>
+
     <div class="notice" id="notice" role="status" aria-live="polite"></div>
 
     <div class="confirm-layer" id="confirmLayer" aria-hidden="true">
@@ -142,6 +200,22 @@
           <button class="confirm-no" id="confirmNo" type="button">НЕТ</button>
           <button class="confirm-yes" id="confirmYes" type="button">ДА</button>
         </div>
+      </div>
+    </div>
+
+    <div class="block-picker-layer" id="blockPickerLayer" aria-hidden="true">
+      <div class="block-picker" role="dialog" aria-modal="true" aria-labelledby="blockPickerTitle">
+        <p class="confirm-kicker">НОВЫЙ БЛОК</p>
+        <h2 id="blockPickerTitle">ЧТО ДОБАВИТЬ?</h2>
+        <div class="block-options">
+          <button type="button" data-block-type="heading">ЗАГОЛОВОК</button>
+          <button type="button" data-block-type="text">ТЕКСТ</button>
+          <button type="button" data-block-type="image">ИЗОБРАЖЕНИЕ</button>
+          <button type="button" data-block-type="video">ВИДЕО</button>
+          <button type="button" data-block-type="audio">АУДИО</button>
+          <button type="button" data-block-type="file">ФАЙЛ</button>
+        </div>
+        <button class="block-picker-cancel" id="blockPickerCancel" type="button">ОТМЕНИТЬ</button>
       </div>
     </div>
   </div>
