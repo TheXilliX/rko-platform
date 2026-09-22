@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FBFAF7">
+  <meta name="description" content="Приватная образовательная платформа RKO">
+  <title>RKO — обучение</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Urbanist:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FBFAF7'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23292929' stroke-width='7'/%3E%3Cpath d='M34 11a21 21 0 0 1 19 21' fill='none' stroke='%23FFAE42' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <section class="splash" id="splash" aria-hidden="true">
+      <p class="service-label splash-label">[ PRIVATE COURSE ]</p>
+      <p class="splash-word splash-name">Влад 2Hard</p>
+      <p class="splash-word splash-rko">RKO</p>
+    </section>
+
+    <section class="page auth-page" id="authPage" aria-label="Авторизация">
+      <p class="service-label page-label">[ LOGIN ]</p>
+
+      <form class="auth-form" id="authForm" novalidate>
+        <h1 class="auth-title">ВХОД</h1>
+
+        <div class="auth-fields">
+          <label class="field">
+            <span class="visually-hidden">Логин</span>
+            <input id="login" name="login" type="text" placeholder="ЛОГИН" autocomplete="username" autocapitalize="none" spellcheck="false">
+          </label>
+
+          <label class="field password-field">
+            <span class="visually-hidden">Пароль</span>
+            <input id="password" name="password" type="password" placeholder="ПАРОЛЬ" autocomplete="current-password">
+            <button class="eye-button" id="eyeButton" type="button" aria-label="Показать пароль" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/>
+                <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </label>
+        </div>
+
+        <div class="auth-footer">
+          <button class="submit-button" type="submit">ВОЙТИ</button>
+          <p class="auth-status" id="authStatus" aria-live="polite"></p>
+          <p class="password-help" id="passwordHelp">
+            Не получается войти?<br>
+            Напишите в Telegram — <a href="https://t.me/Vlad_2hard" target="_blank" rel="noreferrer">@Vlad_2hard</a>
+          </p>
+        </div>
+      </form>
+    </section>
+
+    <section class="page welcome-page" id="welcomePage" aria-live="polite">
+      <p class="welcome-kicker" id="welcomeKicker"></p>
+      <h1 class="welcome-title" id="welcomeTitle"></h1>
+    </section>
+
+    <section class="page dashboard-page" id="dashboardPage">
+      <header class="topbar">
+        <p class="service-label" id="roleLabel">[ RKO / УЧЕНИК ]</p>
+        <div class="account-nav" aria-label="Аккаунт">
+          <span id="accountName">ВЛАД</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+          <span class="admin-mark" id="adminMark">АДМИН</span>
+          <span class="nav-dot admin-dot" id="adminDot" aria-hidden="true"></span>
+          <button class="logout-button" id="logoutButton" type="button">ВЫЙТИ</button>
+        </div>
+      </header>
+
+      <main class="learning-shell">
+        <h1 class="display-title"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
+
+        <div class="empty-course">
+          <p class="course-instruction">ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА.</p>
+          <div class="course-line" aria-hidden="true"></div>
+        </div>
+
+        <p class="signature">[ ВЛАД 2HARD ]</p>
+      </main>
+    </section>
+  </div>
+
+  <script type="module" src="./src/scripts/app.js"></script>
+</body>
+</html>
