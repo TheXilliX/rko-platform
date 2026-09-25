@@ -731,6 +731,8 @@ body.error-flash {
   justify-content: space-between;
   gap: 24px;
 }
+.structure-add-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.add-lesson-button { color: var(--text-secondary); }
 
 .structure-heading h2,
 .placeholder-view h2 {
@@ -1883,6 +1885,7 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   .structure-heading {
     align-items: flex-end;
   }
+  .structure-add-actions { justify-content: flex-start; }
 
   .structure-heading h2 {
     font-size: clamp(1.45rem, 7vw, 2rem);

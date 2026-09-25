@@ -72,6 +72,7 @@ const secondaryColor = $("#secondaryColor");
 const resetColors = $("#resetColors");
 const structureView = $('[data-admin-view="structure"]');
 const createAccountButton = $("#createAccountButton");
+const addLessonButton = $("#addLessonButton");
 const accountsList = $("#accountsList");
 const accountLayer = $("#accountLayer");
 const accountForm = $("#accountForm");
@@ -621,6 +622,21 @@ function addItem() {
   startInlineRename(newItem.id, true);
 }
 
+function addLessonToSection() {
+  const target = selectedId ? findNode(draftStructure, selectedId) : null;
+  if (!target || target.item.type !== "section") {
+    showNotice("СНАЧАЛА ВЫБЕРИ РАЗДЕЛ", "error");
+    return;
+  }
+  const newItem = { id: uid("lesson"), type: "lesson", title: "Новый урок", visible: platformSettings.newItemsVisible, allowDownloads: platformSettings.newItemsAllowDownloads, blocks: [] };
+  target.item.children ??= [];
+  target.item.children.push(newItem);
+  collapsedIds.delete(target.item.id);
+  selectedId = newItem.id;
+  renderStructure();
+  startInlineRename(newItem.id, true);
+}
+
 function startInlineRename(id, selectAll = false) {
   const found = findNode(draftStructure, id);
   const row = structureRows.querySelector(`[data-id="${id}"]`);
@@ -693,6 +709,15 @@ function moveStructureItem(sourceId, targetId, placeAfter = false) {
     return;
   }
   if (source.item.type === "lesson" && target.item.type === "module") {
+    if (source.parent?.id === target.item.id) return;
+    source.siblings.splice(source.siblings.findIndex((item) => item.id === sourceId), 1);
+    target.item.children ??= [];
+    target.item.children.push(source.item);
+    renderStructure();
+    showNotice("УРОК ПЕРЕМЕЩЁН", "success");
+    return;
+  }
+  if (source.item.type === "lesson" && target.item.type === "section") {
     if (source.parent?.id === target.item.id) return;
     source.siblings.splice(source.siblings.findIndex((item) => item.id === sourceId), 1);
     target.item.children ??= [];
@@ -922,9 +947,9 @@ function renderAccounts() {
     row.innerHTML = `<div class="account-card-main"><span class="account-card-type"></span><h3 class="account-card-name"></h3></div><div class="account-card-meta"><span class="account-card-telegram"></span><span class="account-card-status"></span><button class="account-card-action" type="button">НАСТРОЙКИ</button></div>`;
     row.querySelector(".account-card-type").textContent = isOwnerAccount(account) ? "ВЛАДЕЛЕЦ" : account.role === "admin" ? "АДМИНИСТРАТОР" : "УЧЕНИК";
     row.querySelector(".account-card-name").textContent = accountDisplayName(account);
-    row.querySelector(".account-card-telegram").textContent = `TELEGRAM / ${account.telegram || ""}`.trimEnd();
+    row.querySelector(".account-card-telegram").textContent = account.telegram ? `TELEGRAM / ${account.telegram}` : "TELEGRAM";
     const status = row.querySelector(".account-card-status");
-    status.textContent = `ДОСТУП / ${isStaffAccount(account) || account.courseAccess !== false ? "ОТКРЫТ" : "ЗАКРЫТ"}`;
+    status.textContent = isStaffAccount(account) || account.courseAccess !== false ? "ДОСТУП ОТКРЫТ" : "ДОСТУП ЗАКРЫТ";
     status.classList.toggle("is-blocked", !isStaffAccount(account) && account.courseAccess === false);
     row.querySelector(".account-card-action").addEventListener("click", () => openAccountModal("profile", account));
     accountsList.appendChild(row);
@@ -935,7 +960,7 @@ function openAccountModal(mode, account = null) {
   accountModalMode = mode;
   editingAccountLogin = account?.login || null;
   const isCreate = mode === "create";
-  const isOwnProfile = !isCreate && account === currentAccount;
+  const isOwnProfile = mode === "self" && !isCreate && account === currentAccount;
   const isOwnStudent = isOwnProfile && !isStaffAccount(account);
   const ownerProtected = !isCreate && isOwnerAccount(account) && !isOwnerAccount(currentAccount);
   const staffReadOnly = !isCreate && isStaffAccount(currentAccount) && account !== currentAccount && !isOwnerAccount(currentAccount);
@@ -965,10 +990,10 @@ function openAccountModal(mode, account = null) {
   accountRole.value = account?.role || "student";
   accountRole.closest("label").hidden = !isCreate && account === currentAccount && !isStaffAccount(account);
   const isOwnAccount = !isCreate && account === currentAccount;
-  accountLogin.closest("label").hidden = isOwnProfile || isOwnAccount;
+  accountLogin.closest("label").hidden = isOwnProfile;
   accountPassword.closest("label").hidden = !isCreate;
-  accountRole.closest("label").hidden = isOwnProfile || isOwnAccount;
-  accountCourseAccess.closest(".account-access-toggle").hidden = isOwnProfile || isOwnAccount;
+  accountRole.closest("label").hidden = isOwnProfile;
+  accountCourseAccess.closest(".account-access-toggle").hidden = isOwnProfile;
   const canChangeRole = isCreate ? isOwnerAccount(currentAccount) : isOwnerAccount(currentAccount) && account && account !== currentAccount;
   accountRole.disabled = !canChangeRole;
   const accessOpen = isStaffAccount(account) ? true : account?.courseAccess !== false;
@@ -1911,6 +1936,7 @@ document.addEventListener("click", (event) => {
   }
 });
 addButton.addEventListener("click", addItem);
+addLessonButton.addEventListener("click", addLessonToSection);
 saveStructure.addEventListener("click", saveDraft);
 cancelStructure.addEventListener("click", cancelDraft);
 confirmNo.addEventListener("click", closeDeleteDialog);
@@ -2030,7 +2056,7 @@ resetColors.addEventListener("click", () => {
 });
 window.addEventListener("resize", updateTabIndicator);
 logoutButton.addEventListener("click", () => logoutFrom(logoutButton));
-accountName.addEventListener("click", () => { if (currentAccount) openAccountModal("profile", currentAccount); });
+accountName.addEventListener("click", () => { if (currentAccount) openAccountModal("self", currentAccount); });
 createAccountButton.addEventListener("click", () => {
   if (!isOwnerAccount(currentAccount)) {
     showNotice("НЕДОСТАТОЧНО ПРАВ", "error");
