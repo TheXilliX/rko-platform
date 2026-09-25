@@ -924,8 +924,11 @@ function openAccountModal(mode, account = null) {
   const isCreate = mode === "create";
   const isOwnStudent = !isCreate && account === currentAccount && !isStaffAccount(account);
   const ownerProtected = !isCreate && isOwnerAccount(account) && !isOwnerAccount(currentAccount);
+  const staffReadOnly = !isCreate && isStaffAccount(currentAccount) && account !== currentAccount && !isOwnerAccount(currentAccount);
   accountForm.hidden = isOwnStudent;
   studentAccountForm.hidden = !isOwnStudent;
+  accountForm.classList.toggle("account-modal--own", !isCreate && account === currentAccount);
+  accountForm.classList.toggle("account-modal--readonly", staffReadOnly || ownerProtected);
   if (isOwnStudent) {
     studentFirstName.value = account?.firstName || "";
     studentLastName.value = account?.lastName || "";
@@ -964,18 +967,24 @@ function openAccountModal(mode, account = null) {
   accountLastName.disabled = false;
   accountTelegram.disabled = false;
   accountPasswordChange.disabled = false;
-  accountPasswordChange.textContent = isOwnerAccount(currentAccount) && !isOwnAccount && !isCreate ? "СБРОСИТЬ ПАРОЛЬ" : "ИЗМЕНИТЬ ПАРОЛЬ";
+  accountPasswordChange.textContent = !isCreate && isStaffAccount(currentAccount) && !isOwnAccount
+    ? "СБРОСИТЬ ПАРОЛЬ"
+    : "ИЗМЕНИТЬ ПАРОЛЬ";
   accountSubmit.disabled = false;
-  if (ownerProtected) {
+  if (staffReadOnly || ownerProtected) {
     accountFirstName.disabled = true;
     accountLastName.disabled = true;
     accountTelegram.disabled = true;
+    accountLogin.disabled = true;
+    accountRole.disabled = true;
+    accountCourseAccess.disabled = true;
     accountPasswordChange.disabled = true;
     accountSubmit.disabled = true;
   }
   accountFormNote.textContent = "";
-  accountFormNote.hidden = !ownerProtected;
+  accountFormNote.hidden = !(ownerProtected || staffReadOnly);
   if (ownerProtected) accountFormNote.textContent = "НАСТРОЙКИ ВЛАДЕЛЬЦА ДОСТУПНЫ ТОЛЬКО ВЛАДЕЛЬЦУ.";
+  if (staffReadOnly) accountFormNote.textContent = "УПРАВЛЯТЬ АККАУНТАМИ МОЖЕТ ТОЛЬКО ВЛАДЕЛЕЦ.";
   accountDelete.hidden = isCreate || !currentAccount || !isStaffAccount(currentAccount) || account === currentAccount || isOwnerAccount(account) || (account?.role === "admin" && !isOwnerAccount(currentAccount));
   accountLayer.classList.add("is-visible");
   accountLayer.setAttribute("aria-hidden", "false");

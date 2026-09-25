@@ -810,6 +810,10 @@ body.error-flash {
 .account-modal h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; }
 .account-modal-close { position: absolute; top: 22px; right: 24px; border: 0; background: transparent; color: var(--text-secondary); font-size: 1.7rem; cursor: pointer; }
 .account-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px 24px; margin-top: 32px; }
+.account-modal--own .account-form-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.account-modal--readonly input,
+.account-modal--readonly select { opacity: .58; cursor: not-allowed; }
+.account-modal--readonly .account-password-change { opacity: .42; cursor: not-allowed; }
 .student-account-fields { display: grid; gap: 18px; margin-top: 32px; }
 .student-account-fields label { display: grid; gap: 8px; color: var(--text-soft); font: 500 .68rem "DM Mono", monospace; letter-spacing: .06em; }
 .student-account-fields input { width: 100%; min-height: 38px; padding: 7px 2px; border: 0; border-bottom: 1px solid var(--line); outline: 0; background: transparent; color: var(--text-primary); font: 700 .95rem "Urbanist", sans-serif; }
