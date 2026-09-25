@@ -40,11 +40,15 @@ const saveStructure = $("#saveStructure");
 const cancelStructure = $("#cancelStructure");
 const notice = $("#notice");
 const confirmLayer = $("#confirmLayer");
+const confirmKicker = $(".confirm-kicker", confirmLayer);
+const confirmTitle = $("#confirmTitle");
 const confirmCopy = $("#confirmCopy");
 const confirmNo = $("#confirmNo");
 const confirmYes = $("#confirmYes");
 const editorPage = $("#editorPage");
 const editorLogoutButton = $("#editorLogoutButton");
+const editorRoleLabel = $("#editorRoleLabel");
+const editorAccountRole = $("#editorAccountRole");
 const editorBack = $("#editorBack");
 const editorPath = $("#editorPath");
 const lessonNameInput = $("#lessonNameInput");
@@ -155,6 +159,7 @@ let accountStore = loadAccounts();
 let accountModalMode = "profile";
 let editingAccountLogin = null;
 let pendingAccountLogin = null;
+let pendingConfirmAction = null;
 let passwordTargetAccount = null;
 let passwordResetMode = false;
 let savedStructure = loadSavedStructure();
@@ -790,8 +795,11 @@ function openDeleteDialog(id) {
   if (!found) return;
   pendingDeleteId = id;
   pendingDeleteContext = editorLessonId === id && editorPage.classList.contains("is-active") ? "editor" : "structure";
+  pendingConfirmAction = null;
   openMenuId = null;
   confirmCopy.textContent = `Удалить «${found.item.title}»${found.item.children?.length ? " вместе со всем содержимым" : ""}?`;
+  confirmKicker.textContent = "УДАЛЕНИЕ";
+  confirmTitle.textContent = "УДАЛИТЬ ЭЛЕМЕНТ?";
   confirmLayer.classList.add("is-visible");
   confirmLayer.setAttribute("aria-hidden", "false");
   window.setTimeout(() => confirmNo.focus(), 100);
@@ -802,7 +810,10 @@ function openAccountDeleteDialog(account) {
   if (account.role === "admin" && !isOwnerAccount(currentAccount)) return;
   pendingAccountLogin = account.login;
   pendingDeleteContext = "account";
+  pendingConfirmAction = null;
   confirmCopy.textContent = `Удалить аккаунт «${accountDisplayName(account)}»?`;
+  confirmKicker.textContent = "УДАЛЕНИЕ";
+  confirmTitle.textContent = "УДАЛИТЬ АККАУНТ?";
   confirmLayer.classList.add("is-visible");
   confirmLayer.setAttribute("aria-hidden", "false");
   window.setTimeout(() => confirmNo.focus(), 100);
@@ -812,6 +823,9 @@ function closeDeleteDialog() {
   pendingDeleteId = null;
   pendingAccountLogin = null;
   pendingDeleteContext = "structure";
+  pendingConfirmAction = null;
+  confirmKicker.textContent = "УДАЛЕНИЕ";
+  confirmTitle.textContent = "УДАЛИТЬ ЭЛЕМЕНТ?";
   confirmLayer.classList.remove("is-visible");
   confirmLayer.setAttribute("aria-hidden", "true");
 }
@@ -905,13 +919,12 @@ function renderAccounts() {
   ordered.forEach((account) => {
     const row = document.createElement("article");
     row.className = `account-card${isOwnerAccount(account) ? " account-card--owner" : account.role === "admin" ? " account-card--admin" : ""}`;
-    row.innerHTML = `<div class="account-card-main"><span class="account-card-type"></span><h3 class="account-card-name"></h3><p class="account-card-login"></p></div><div class="account-card-meta"><span class="account-card-telegram"></span><span class="account-card-status"></span><button class="account-card-action" type="button">НАСТРОЙКИ</button></div>`;
+    row.innerHTML = `<div class="account-card-main"><span class="account-card-type"></span><h3 class="account-card-name"></h3></div><div class="account-card-meta"><span class="account-card-telegram"></span><span class="account-card-status"></span><button class="account-card-action" type="button">НАСТРОЙКИ</button></div>`;
     row.querySelector(".account-card-type").textContent = isOwnerAccount(account) ? "ВЛАДЕЛЕЦ" : account.role === "admin" ? "АДМИНИСТРАТОР" : "УЧЕНИК";
     row.querySelector(".account-card-name").textContent = accountDisplayName(account);
-    row.querySelector(".account-card-login").textContent = `ЛОГИН  /  ${account.login}`;
-    row.querySelector(".account-card-telegram").textContent = account.telegram || "TELEGRAM  /  —";
+    row.querySelector(".account-card-telegram").textContent = `TELEGRAM / ${account.telegram || ""}`.trimEnd();
     const status = row.querySelector(".account-card-status");
-    status.textContent = isStaffAccount(account) || account.courseAccess !== false ? "ДОСТУП ОТКРЫТ" : "ДОСТУП ЗАКРЫТ";
+    status.textContent = `ДОСТУП / ${isStaffAccount(account) || account.courseAccess !== false ? "ОТКРЫТ" : "ЗАКРЫТ"}`;
     status.classList.toggle("is-blocked", !isStaffAccount(account) && account.courseAccess === false);
     row.querySelector(".account-card-action").addEventListener("click", () => openAccountModal("profile", account));
     accountsList.appendChild(row);
@@ -922,14 +935,15 @@ function openAccountModal(mode, account = null) {
   accountModalMode = mode;
   editingAccountLogin = account?.login || null;
   const isCreate = mode === "create";
-  const isOwnStudent = !isCreate && account === currentAccount && !isStaffAccount(account);
+  const isOwnProfile = !isCreate && account === currentAccount;
+  const isOwnStudent = isOwnProfile && !isStaffAccount(account);
   const ownerProtected = !isCreate && isOwnerAccount(account) && !isOwnerAccount(currentAccount);
   const staffReadOnly = !isCreate && isStaffAccount(currentAccount) && account !== currentAccount && !isOwnerAccount(currentAccount);
-  accountForm.hidden = isOwnStudent;
-  studentAccountForm.hidden = !isOwnStudent;
+  accountForm.hidden = isOwnProfile;
+  studentAccountForm.hidden = !isOwnProfile;
   accountForm.classList.toggle("account-modal--own", !isCreate && account === currentAccount);
   accountForm.classList.toggle("account-modal--readonly", staffReadOnly || ownerProtected);
-  if (isOwnStudent) {
+  if (isOwnProfile) {
     studentFirstName.value = account?.firstName || "";
     studentLastName.value = account?.lastName || "";
     studentTelegram.value = account?.telegram || "";
@@ -951,10 +965,10 @@ function openAccountModal(mode, account = null) {
   accountRole.value = account?.role || "student";
   accountRole.closest("label").hidden = !isCreate && account === currentAccount && !isStaffAccount(account);
   const isOwnAccount = !isCreate && account === currentAccount;
-  accountLogin.closest("label").hidden = isOwnStudent || isOwnAccount;
+  accountLogin.closest("label").hidden = isOwnProfile || isOwnAccount;
   accountPassword.closest("label").hidden = !isCreate;
-  accountRole.closest("label").hidden = isOwnStudent || isOwnAccount;
-  accountCourseAccess.closest(".account-access-toggle").hidden = isOwnStudent || isOwnAccount;
+  accountRole.closest("label").hidden = isOwnProfile || isOwnAccount;
+  accountCourseAccess.closest(".account-access-toggle").hidden = isOwnProfile || isOwnAccount;
   const canChangeRole = isCreate ? isOwnerAccount(currentAccount) : isOwnerAccount(currentAccount) && account && account !== currentAccount;
   accountRole.disabled = !canChangeRole;
   const accessOpen = isStaffAccount(account) ? true : account?.courseAccess !== false;
@@ -962,7 +976,7 @@ function openAccountModal(mode, account = null) {
   accountCourseAccess.classList.toggle("is-on", accessOpen);
   accountCourseAccess.querySelector(".setting-switch-label").textContent = accessOpen ? "ОТКРЫТ" : "ЗАКРЫТ";
   accountCourseAccess.disabled = (!isCreate && !(isStaffAccount(currentAccount) && account && account !== currentAccount)) || isStaffAccount(account);
-  accountLogin.disabled = isOwnStudent || ownerProtected;
+  accountLogin.disabled = isOwnProfile || ownerProtected;
   accountFirstName.disabled = false;
   accountLastName.disabled = false;
   accountTelegram.disabled = false;
@@ -1032,6 +1046,23 @@ function openPasswordModal() {
   copyButton.hidden = !passwordResetMode;
   passwordLayer.classList.add("is-visible");
   passwordLayer.setAttribute("aria-hidden", "false");
+}
+
+function openPasswordResetConfirm() {
+  const account = accountStore.find((item) => item.login === editingAccountLogin);
+  if (!account || !currentAccount || !isOwnerAccount(currentAccount) || account === currentAccount) {
+    openPasswordModal();
+    return;
+  }
+  pendingAccountLogin = account.login;
+  pendingDeleteContext = "account";
+  pendingConfirmAction = "password-reset";
+  confirmKicker.textContent = "СБРОС ПАРОЛЯ";
+  confirmTitle.textContent = "ВЫ ТОЧНО ХОТИТЕ СБРОСИТЬ ПАРОЛЬ?";
+  confirmCopy.textContent = `Для аккаунта «${accountDisplayName(account)}» будет создан новый пароль.`;
+  confirmLayer.classList.add("is-visible");
+  confirmLayer.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => confirmNo.focus(), 100);
 }
 
 function closePasswordModal() {
@@ -1192,7 +1223,7 @@ async function submitAccountForm(event) {
 
 async function submitStudentAccountForm(event) {
   event.preventDefault();
-  if (!currentAccount || isStaffAccount(currentAccount)) return;
+  if (!currentAccount) return;
   const firstName = studentFirstName.value.trim();
   if (!firstName) {
     studentAccountFormNote.textContent = "Заполни имя.";
@@ -1548,6 +1579,9 @@ function openLessonEditor(id) {
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
   editorPath.textContent = path.map((item) => item.title).join("  /  ");
+  const roleText = isOwnerAccount(currentAccount) ? "ВЛАДЕЛЕЦ" : currentAccount?.role === "admin" ? "АДМИН" : "УЧЕНИК";
+  editorRoleLabel.textContent = `[ RKO / ${roleText} ]`;
+  editorAccountRole.textContent = roleText;
   lessonNameInput.value = editorDraft.title;
   allowDownloads.checked = editorDraft.allowDownloads;
   updateEditorVisibility();
@@ -1880,7 +1914,16 @@ addButton.addEventListener("click", addItem);
 saveStructure.addEventListener("click", saveDraft);
 cancelStructure.addEventListener("click", cancelDraft);
 confirmNo.addEventListener("click", closeDeleteDialog);
-confirmYes.addEventListener("click", deletePending);
+confirmYes.addEventListener("click", () => {
+  if (pendingConfirmAction === "password-reset") {
+    const login = pendingAccountLogin;
+    closeDeleteDialog();
+    editingAccountLogin = login;
+    openPasswordModal();
+    return;
+  }
+  deletePending();
+});
 confirmLayer.addEventListener("click", (event) => { if (event.target === confirmLayer) closeDeleteDialog(); });
 courseList.addEventListener("click", handleCourseClick);
 courseGuideBack.addEventListener("click", () => {
@@ -2001,7 +2044,11 @@ accountModalClose.addEventListener("click", closeAccountModal);
 accountCancel.addEventListener("click", closeAccountModal);
 studentAccountModalClose.addEventListener("click", closeAccountModal);
 studentAccountCancel.addEventListener("click", closeAccountModal);
-accountPasswordChange.addEventListener("click", openPasswordModal);
+accountPasswordChange.addEventListener("click", () => {
+  const target = accountStore.find((item) => item.login === editingAccountLogin) || currentAccount;
+  if (target !== currentAccount && isOwnerAccount(currentAccount)) openPasswordResetConfirm();
+  else openPasswordModal();
+});
 studentPasswordChange.addEventListener("click", openPasswordModal);
 passwordModalClose.addEventListener("click", closePasswordModal);
 passwordCancel.addEventListener("click", closePasswordModal);
