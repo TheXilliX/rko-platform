@@ -1,0 +1,10 @@
+vlad2hard.ru, www.vlad2hard.ru {
+  encode gzip
+
+  handle /api/* {
+    reverse_proxy api:3000
+  }
+
+  root * /srv
+  file_server
+}

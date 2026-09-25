@@ -59,6 +59,7 @@
       <div class="welcome-content">
         <p class="welcome-kicker" id="welcomeKicker"></p>
         <h1 class="welcome-title" id="welcomeTitle"></h1>
+        <p class="welcome-role" id="welcomeRole"></p>
       </div>
     </section>
 
@@ -66,7 +67,7 @@
       <header class="topbar dashboard-topbar">
         <p class="service-label" id="roleLabel">[ RKO / УЧЕНИК ]</p>
         <div class="account-nav" aria-label="Аккаунт">
-          <span id="accountName">ВЛАД</span>
+          <button class="account-name nav-action" id="accountName" type="button">ВЛАД</button>
           <span class="nav-dot" aria-hidden="true"></span>
           <button class="admin-mark nav-action" id="adminMark" type="button">АДМИН</button>
           <span class="nav-dot admin-dot" id="adminDot" aria-hidden="true"></span>
@@ -87,13 +88,17 @@
           </div>
 
           <article class="lesson-reader" id="lessonReader" aria-hidden="true">
-            <button class="reader-back" id="readerBack" type="button">← К УРОКАМ</button>
-            <p class="reader-path" id="readerPath"></p>
+            <button class="reader-back" id="readerBack" type="button">← НАЗАД К МОДУЛЮ</button>
             <h2 class="reader-title" id="readerTitle"></h2>
             <div class="reader-content" id="readerContent"></div>
+            <div class="reader-navigation" aria-label="Навигация по урокам">
+              <button class="reader-nav-button" id="previousLesson" type="button">← НАЗАД</button>
+              <div class="lesson-progress" id="lessonProgress" aria-label="Прогресс уроков"></div>
+              <button class="reader-nav-button" id="nextLesson" type="button">ДАЛЕЕ →</button>
+            </div>
           </article>
 
-          <p class="signature">[ Влад 2Hard ]</p>
+          <p class="signature">[ <span>Влад</span> <strong>2Hard</strong> ]</p>
         </main>
 
         <main class="workspace-panel admin-shell" id="adminPanel" aria-hidden="true">
@@ -129,12 +134,50 @@
               </div>
             </section>
 
-            <section class="admin-view placeholder-view" data-admin-view="accounts">
-              <h2>АККАУНТЫ</h2>
+            <section class="admin-view accounts-view" data-admin-view="accounts">
+              <div class="accounts-heading">
+                <div>
+                  <p class="settings-card-label">УПРАВЛЕНИЕ ДОСТУПОМ</p>
+                  <h2>АККАУНТЫ</h2>
+                </div>
+                <button class="add-button" id="createAccountButton" type="button">+ СОЗДАТЬ АККАУНТ</button>
+              </div>
+              <div class="accounts-list" id="accountsList"></div>
             </section>
 
             <section class="admin-view placeholder-view" data-admin-view="settings">
-              <h2>НАСТРОЙКИ</h2>
+              <div class="settings-heading">
+                <h2>НАСТРОЙКИ</h2>
+                <p>ТОЛЬКО ТО, ЧТО НУЖНО ДЛЯ РАБОТЫ КУРСА.</p>
+              </div>
+              <div class="settings-grid">
+                <section class="settings-card">
+                  <p class="settings-card-label">НОВЫЕ МАТЕРИАЛЫ</p>
+                  <h3>ВИДИМОСТЬ ПО УМОЛЧАНИЮ</h3>
+                  <p>Новые разделы, модули и уроки будут создаваться закрытыми. Их можно открыть позже вручную.</p>
+                  <button class="setting-switch" id="defaultVisibility" type="button" aria-pressed="false">
+                    <span class="setting-switch-label">ЗАКРЫТ</span><span class="setting-switch-track"><i></i></span>
+                  </button>
+                </section>
+                <section class="settings-card">
+                  <p class="settings-card-label">ВЛОЖЕНИЯ</p>
+                  <h3>СКАЧИВАНИЕ ПО УМОЛЧАНИЮ</h3>
+                  <p>Разрешить ученикам скачивать файлы в новых уроках.</p>
+                  <button class="setting-switch is-on" id="defaultDownloads" type="button" aria-pressed="true">
+                    <span class="setting-switch-label">РАЗРЕШЕНО</span><span class="setting-switch-track"><i></i></span>
+                  </button>
+                </section>
+                <section class="settings-card settings-card--colors">
+                  <p class="settings-card-label">ВНЕШНИЙ ВИД</p>
+                  <h3>ЦВЕТА ИНТЕРФЕЙСА</h3>
+                  <p>Настрой акцентный и дополнительный цвет платформы.</p>
+                  <div class="color-settings">
+                    <label><span>ОСНОВНОЙ</span><input id="primaryColor" type="color" value="#FFAE42"></label>
+                    <label><span>ДОПОЛНИТЕЛЬНЫЙ</span><input id="secondaryColor" type="color" value="#2F7D57"></label>
+                  </div>
+                  <button class="text-action" id="resetColors" type="button">ВЕРНУТЬ ЦВЕТА</button>
+                </section>
+              </div>
             </section>
           </div>
         </main>
@@ -173,7 +216,9 @@
             </div>
             <div class="editor-setting">
               <span>ВИДИМОСТЬ</span>
-              <button class="setting-select" id="lessonVisibility" type="button">ДЛЯ ВСЕХ <span>⌄</span></button>
+              <button class="setting-switch editor-visibility-switch is-on" id="lessonVisibility" type="button" aria-pressed="true">
+                <span class="setting-switch-label" id="lessonVisibilityLabel">ДЛЯ ВСЕХ</span><span class="setting-switch-track"><i></i></span>
+              </button>
             </div>
             <label class="editor-setting editor-toggle-setting">
               <span>РАЗРЕШИТЬ СКАЧИВАНИЕ ВЛОЖЕНИЙ</span>
@@ -217,6 +262,62 @@
         </div>
         <button class="block-picker-cancel" id="blockPickerCancel" type="button">ОТМЕНИТЬ</button>
       </div>
+    </div>
+
+    <div class="account-layer" id="accountLayer" aria-hidden="true">
+      <form class="account-modal" id="accountForm" novalidate>
+        <button class="account-modal-close" id="accountModalClose" type="button" aria-label="Закрыть">×</button>
+        <p class="confirm-kicker" id="accountModalKicker" hidden>АККАУНТ</p>
+        <h2 id="accountModalTitle">НАСТРОЙКИ</h2>
+        <div class="account-form-grid">
+          <label><span>ИМЯ</span><input id="accountFirstName" type="text" autocomplete="given-name" required></label>
+          <label><span>ФАМИЛИЯ</span><input id="accountLastName" type="text" autocomplete="family-name"></label>
+          <label><span>TELEGRAM</span><input id="accountTelegram" type="text" placeholder="@username" autocomplete="off"></label>
+          <label><span>ЛОГИН</span><input id="accountLogin" type="text" autocomplete="username" required></label>
+          <label class="account-password-field"><span>ПАРОЛЬ</span><input id="accountPassword" type="password" autocomplete="new-password"><button id="accountPasswordEye" type="button" aria-label="Показать пароль">◉</button></label>
+          <label><span>ТИП АККАУНТА</span><select id="accountRole"><option value="student">УЧЕНИК</option><option value="admin">АДМИНИСТРАТОР</option><option value="owner" disabled>ВЛАДЕЛЕЦ</option></select></label>
+          <div class="account-access-toggle"><span>ДОСТУП К КУРСУ</span><button id="accountCourseAccess" class="setting-switch" type="button" role="switch" aria-pressed="true"><span class="setting-switch-label">ОТКРЫТ</span><span class="setting-switch-track"><i></i></span></button></div>
+          <button class="account-password-change" id="accountPasswordChange" type="button" hidden>ИЗМЕНИТЬ ПАРОЛЬ</button>
+        </div>
+        <p class="account-form-note" id="accountFormNote" hidden></p>
+        <div class="account-modal-actions">
+          <button class="account-cancel" id="accountCancel" type="button">ОТМЕНИТЬ</button>
+          <button class="account-delete" id="accountDelete" type="button" hidden>УДАЛИТЬ АККАУНТ</button>
+          <button class="account-submit" id="accountSubmit" type="submit">СОХРАНИТЬ</button>
+        </div>
+      </form>
+      <form class="account-modal student-account-modal" id="studentAccountForm" novalidate hidden>
+        <button class="account-modal-close" id="studentAccountModalClose" type="button" aria-label="Закрыть">×</button>
+        <h2>НАСТРОЙКИ</h2>
+        <div class="student-account-fields">
+          <label><span>ИМЯ</span><input id="studentFirstName" type="text" autocomplete="given-name" required></label>
+          <label><span>ФАМИЛИЯ</span><input id="studentLastName" type="text" autocomplete="family-name"></label>
+          <label><span>TELEGRAM</span><input id="studentTelegram" type="text" placeholder="@username" autocomplete="off"></label>
+          <button class="account-password-change" id="studentPasswordChange" type="button">ИЗМЕНИТЬ ПАРОЛЬ</button>
+        </div>
+        <p class="account-form-note" id="studentAccountFormNote" hidden></p>
+        <div class="account-modal-actions">
+          <button class="account-cancel" id="studentAccountCancel" type="button">ОТМЕНИТЬ</button>
+          <button class="account-submit" type="submit">СОХРАНИТЬ</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="password-layer" id="passwordLayer" aria-hidden="true">
+      <form class="password-modal" id="passwordForm" novalidate>
+        <button class="account-modal-close" id="passwordModalClose" type="button" aria-label="Закрыть">×</button>
+        <h2>ИЗМЕНИТЬ ПАРОЛЬ</h2>
+        <div class="password-form-grid">
+          <label class="password-eye-field"><span>СТАРЫЙ ПАРОЛЬ</span><input id="currentPassword" type="password" autocomplete="current-password" required><button id="currentPasswordEye" type="button" aria-label="Показать старый пароль"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button></label>
+          <label class="password-eye-field"><span>НОВЫЙ ПАРОЛЬ</span><input id="newPassword" type="password" autocomplete="new-password" required><button id="newPasswordEye" type="button" aria-label="Показать новый пароль"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button></label>
+          <label class="password-eye-field"><span>ПОВТОРИТЕ НОВЫЙ ПАРОЛЬ</span><input id="repeatPassword" type="password" autocomplete="new-password" required><button id="repeatPasswordEye" type="button" aria-label="Показать повтор нового пароля"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button></label>
+        </div>
+        <p class="password-form-note" id="passwordFormNote"></p>
+        <div class="account-modal-actions">
+          <button class="account-cancel" id="passwordCancel" type="button">ОТМЕНИТЬ</button>
+          <button class="account-submit" type="submit">СОХРАНИТЬ ПАРОЛЬ</button>
+        </div>
+      </form>
     </div>
   </div>
 
