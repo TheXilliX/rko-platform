@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#FBFAF7"/>
+  <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" font-weight="900" letter-spacing="-2" fill="#292929">V2H</text>
+  <path d="M18 48h28" stroke="#FFAE42" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -121,6 +121,7 @@ const DEFAULT_SETTINGS = { newItemsVisible: false, newItemsAllowDownloads: true,
 const API_BASE = "/api";
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
+const sameAccount = (a, b) => Boolean(a && b && ((a.id && b.id && a.id === b.id) || (a.login && b.login && a.login === b.login)));
 const DEFAULT_STRUCTURE = [{
   id: "section-training", type: "section", title: "ОБУЧЕНИЕ", visible: true, children: [{
     id: "module-intro", type: "module", title: "МОДУЛЬ 01 — ВВЕДЕНИЕ В RKO", visible: true, children: [
@@ -831,7 +832,7 @@ function openDeleteDialog(id) {
 }
 
 function openAccountDeleteDialog(account) {
-  if (!account || !currentAccount || !isStaffAccount(currentAccount) || account === currentAccount || isOwnerAccount(account)) return;
+  if (!account || !currentAccount || !isStaffAccount(currentAccount) || sameAccount(account, currentAccount) || isOwnerAccount(account)) return;
   if (account.role === "admin" && !isOwnerAccount(currentAccount)) return;
   pendingAccountLogin = account.login;
   pendingDeleteContext = "account";
@@ -858,7 +859,7 @@ function closeDeleteDialog() {
 async function deletePending() {
   if (pendingDeleteContext === "account") {
     const account = accountStore.find((item) => item.login === pendingAccountLogin);
-    const canDelete = account && account !== currentAccount && !isOwnerAccount(account)
+    const canDelete = account && !sameAccount(account, currentAccount) && !isOwnerAccount(account)
       && (account.role !== "admin" || isOwnerAccount(currentAccount));
     if (canDelete) {
       if (backendConnected && account.id) {
@@ -963,10 +964,10 @@ function openAccountModal(mode, account = null) {
   const isOwnProfile = mode === "self" && !isCreate && account === currentAccount;
   const isOwnStudent = isOwnProfile && !isStaffAccount(account);
   const ownerProtected = !isCreate && isOwnerAccount(account) && !isOwnerAccount(currentAccount);
-  const staffReadOnly = !isCreate && isStaffAccount(currentAccount) && account !== currentAccount && !isOwnerAccount(currentAccount);
+  const staffReadOnly = !isCreate && isStaffAccount(currentAccount) && !sameAccount(account, currentAccount) && !isOwnerAccount(currentAccount);
   accountForm.hidden = isOwnProfile;
   studentAccountForm.hidden = !isOwnProfile;
-  accountForm.classList.toggle("account-modal--own", !isCreate && account === currentAccount);
+  accountForm.classList.toggle("account-modal--own", !isCreate && sameAccount(account, currentAccount));
   accountForm.classList.toggle("account-modal--readonly", staffReadOnly || ownerProtected);
   if (isOwnProfile) {
     studentFirstName.value = account?.firstName || "";
@@ -983,24 +984,24 @@ function openAccountModal(mode, account = null) {
   accountLastName.value = account?.lastName || "";
   accountTelegram.value = account?.telegram || "";
   accountLogin.value = account?.login || "";
-  accountPassword.value = !isCreate && isStaffAccount(currentAccount) && account && account !== currentAccount
+  accountPassword.value = !isCreate && isStaffAccount(currentAccount) && account && !sameAccount(account, currentAccount)
     ? (account.password || "")
     : "";
   accountPasswordChange.hidden = isCreate;
   accountRole.value = account?.role || "student";
   accountRole.closest("label").hidden = !isCreate && account === currentAccount && !isStaffAccount(account);
-  const isOwnAccount = !isCreate && account === currentAccount;
+  const isOwnAccount = !isCreate && sameAccount(account, currentAccount);
   accountLogin.closest("label").hidden = isOwnProfile;
   accountPassword.closest("label").hidden = !isCreate;
   accountRole.closest("label").hidden = isOwnProfile;
   accountCourseAccess.closest(".account-access-toggle").hidden = isOwnProfile;
-  const canChangeRole = isCreate ? isOwnerAccount(currentAccount) : isOwnerAccount(currentAccount) && account && account !== currentAccount;
+  const canChangeRole = isCreate ? isOwnerAccount(currentAccount) : isOwnerAccount(currentAccount) && account && !sameAccount(account, currentAccount);
   accountRole.disabled = !canChangeRole;
   const accessOpen = isStaffAccount(account) ? true : account?.courseAccess !== false;
   accountCourseAccess.setAttribute("aria-pressed", String(accessOpen));
   accountCourseAccess.classList.toggle("is-on", accessOpen);
   accountCourseAccess.querySelector(".setting-switch-label").textContent = accessOpen ? "ОТКРЫТ" : "ЗАКРЫТ";
-  accountCourseAccess.disabled = (!isCreate && !(isStaffAccount(currentAccount) && account && account !== currentAccount)) || isStaffAccount(account);
+  accountCourseAccess.disabled = (!isCreate && !(isStaffAccount(currentAccount) && account && !sameAccount(account, currentAccount))) || isStaffAccount(account);
   accountLogin.disabled = isOwnProfile || ownerProtected;
   accountFirstName.disabled = false;
   accountLastName.disabled = false;
@@ -1024,7 +1025,7 @@ function openAccountModal(mode, account = null) {
   accountFormNote.hidden = !(ownerProtected || staffReadOnly);
   if (ownerProtected) accountFormNote.textContent = "НАСТРОЙКИ ВЛАДЕЛЬЦА ДОСТУПНЫ ТОЛЬКО ВЛАДЕЛЬЦУ.";
   if (staffReadOnly) accountFormNote.textContent = "УПРАВЛЯТЬ АККАУНТАМИ МОЖЕТ ТОЛЬКО ВЛАДЕЛЕЦ.";
-  accountDelete.hidden = isCreate || !currentAccount || !isStaffAccount(currentAccount) || account === currentAccount || isOwnerAccount(account) || (account?.role === "admin" && !isOwnerAccount(currentAccount));
+  accountDelete.hidden = isCreate || !currentAccount || !isStaffAccount(currentAccount) || sameAccount(account, currentAccount) || isOwnerAccount(account) || (account?.role === "admin" && !isOwnerAccount(currentAccount));
   accountLayer.classList.add("is-visible");
   accountLayer.setAttribute("aria-hidden", "false");
 }
@@ -1032,11 +1033,12 @@ function openAccountModal(mode, account = null) {
 function openPasswordModal() {
   passwordTargetAccount = accountStore.find((item) => item.login === editingAccountLogin) || currentAccount;
   if (!passwordTargetAccount) return;
-  if (passwordTargetAccount !== currentAccount && !isOwnerAccount(currentAccount)) {
+  const isSameAccount = sameAccount(passwordTargetAccount, currentAccount);
+  if (!isSameAccount && !isOwnerAccount(currentAccount)) {
     showNotice("НЕДОСТАТОЧНО ПРАВ", "error");
     return;
   }
-  passwordResetMode = isOwnerAccount(currentAccount) && passwordTargetAccount !== currentAccount;
+  passwordResetMode = isOwnerAccount(currentAccount) && !isSameAccount;
   const currentField = currentPassword.closest("label");
   const repeatField = repeatPassword.closest("label");
   currentField.hidden = passwordResetMode;
@@ -1075,7 +1077,7 @@ function openPasswordModal() {
 
 function openPasswordResetConfirm() {
   const account = accountStore.find((item) => item.login === editingAccountLogin);
-  if (!account || !currentAccount || !isOwnerAccount(currentAccount) || account === currentAccount) {
+  if (!account || !currentAccount || !isOwnerAccount(currentAccount) || sameAccount(account, currentAccount)) {
     openPasswordModal();
     return;
   }
@@ -1207,7 +1209,7 @@ async function submitAccountForm(event) {
   }
   if (!accountCourseAccess.disabled && !isStaffAccount(account)) account.courseAccess = accountCourseAccess.getAttribute("aria-pressed") === "true";
   if (backendConnected && account.id) {
-    const ownProfile = account === currentAccount;
+    const ownProfile = sameAccount(account, currentAccount);
     const { response, body } = await apiRequest(ownProfile ? "/me/profile" : `/accounts/${account.id}`, {
       method: "PATCH",
       body: JSON.stringify(ownProfile ? {
@@ -1229,9 +1231,9 @@ async function submitAccountForm(event) {
       return;
     }
     Object.assign(account, normalizeAccount(body.account));
-    if (currentAccount === account) currentAccount = account;
+    if (sameAccount(currentAccount, account)) currentAccount = account;
   }
-  if (!isOwnStudent && currentAccount === account && previousLogin !== login) {
+  if (!isOwnStudent && sameAccount(currentAccount, account) && previousLogin !== login) {
     const previousProgressKey = `${PROGRESS_KEY}:${previousLogin}`;
     const nextProgressKey = `${PROGRESS_KEY}:${login}`;
     const previousProgress = localStorage.getItem(previousProgressKey);
@@ -1240,7 +1242,10 @@ async function submitAccountForm(event) {
     localStorage.setItem(SESSION_KEY, login);
   }
   saveAccounts();
-  if (currentAccount === account) accountName.textContent = displayAccountFirstName(account);
+  if (sameAccount(currentAccount, account)) {
+    currentAccount = account;
+    accountName.textContent = displayAccountFirstName(account);
+  }
   renderAccounts();
   closeAccountModal();
   showNotice("АККАУНТ СОХРАНЁН", "success");
@@ -2072,7 +2077,7 @@ studentAccountModalClose.addEventListener("click", closeAccountModal);
 studentAccountCancel.addEventListener("click", closeAccountModal);
 accountPasswordChange.addEventListener("click", () => {
   const target = accountStore.find((item) => item.login === editingAccountLogin) || currentAccount;
-  if (target !== currentAccount && isOwnerAccount(currentAccount)) openPasswordResetConfirm();
+  if (!sameAccount(target, currentAccount) && isOwnerAccount(currentAccount)) openPasswordResetConfirm();
   else openPasswordModal();
 });
 studentPasswordChange.addEventListener("click", openPasswordModal);

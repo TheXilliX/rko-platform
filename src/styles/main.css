@@ -1165,7 +1165,7 @@ body.error-flash {
 
 .notice {
   position: fixed;
-  z-index: 50;
+  z-index: 220;
   left: 50%;
   bottom: max(26px, env(safe-area-inset-bottom));
   max-width: calc(100% - 40px);
