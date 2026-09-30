@@ -8,6 +8,7 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 await cp(resolve(root, "index.html"), resolve(dist, "index.html"));
 await cp(resolve(root, "src"), resolve(dist, "src"), { recursive: true });
+await cp(resolve(root, "public"), resolve(dist, "public"), { recursive: true });
 await cp(resolve(root, "favicon-v2h.svg"), resolve(dist, "favicon-v2h.svg"));
 
 console.log("Built static site in dist/");

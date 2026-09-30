@@ -3,7 +3,7 @@ export const accounts = [
     login: "admin",
     password: "admin",
     name: "ВЛАД",
-    role: "admin",
+    role: "owner",
   },
   {
     login: "student",

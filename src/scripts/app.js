@@ -31,6 +31,11 @@ const courseInstruction = $(".course-instruction");
 const courseGuideBack = $("#courseGuideBack");
 const learningTitle = $("#learningTitle");
 const lessonReader = $("#lessonReader");
+const coniferWidget = $("#coniferWidget");
+const coniferTreeButton = $("#coniferTreeButton");
+const coniferMiniOrigin = $("#coniferMiniOrigin");
+const coniferScene = $("#coniferScene");
+const coniferBackButton = $("#coniferBackButton");
 const readerBack = $("#readerBack");
 const readerTitle = $("#readerTitle");
 const readerContent = $("#readerContent");
@@ -168,6 +173,10 @@ let savedStructure = loadSavedStructure();
 let draftStructure = clone(savedStructure);
 let baselineIds = collectIds(savedStructure);
 let backendConnected = false;
+let coniferPressCount = 0;
+let coniferPressResetTimer;
+let coniferRitualTimers = [];
+let coniferHideTimer;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
@@ -374,12 +383,78 @@ function statusFor(item) {
 
 function clearTransitionTimer() { window.clearTimeout(transitionTimer); }
 
+function clearConiferTimers() {
+  coniferRitualTimers.forEach((timer) => window.clearTimeout(timer));
+  coniferRitualTimers = [];
+  window.clearTimeout(coniferPressResetTimer);
+  window.clearTimeout(coniferHideTimer);
+}
+
+function resetConiferCult({ resetCount = true } = {}) {
+  clearConiferTimers();
+  coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
+  coniferMiniOrigin?.classList.remove("is-burst");
+  coniferTreeButton?.classList.remove("is-pressing");
+  coniferWidget?.classList.remove("is-fullscreen");
+  if (resetCount) coniferPressCount = 0;
+}
+
+function setConiferAvailability(available) {
+  if (!coniferWidget) return;
+  if (!available) resetConiferCult();
+  coniferWidget.classList.toggle("is-hidden", !available);
+  coniferWidget.setAttribute("aria-hidden", String(!available));
+}
+
+function syncConiferAvailability() {
+  const available = Boolean(
+    currentAccount
+      && dashboardMode === "learning"
+      && coursePath.length === 0
+      && !lessonReader?.classList.contains("is-visible")
+      && dashboardPage?.classList.contains("is-active"),
+  );
+  setConiferAvailability(available);
+}
+
+function triggerConiferMiniBurst() {
+  coniferMiniOrigin?.classList.remove("is-burst");
+  void coniferMiniOrigin?.offsetWidth;
+  coniferMiniOrigin?.classList.add("is-burst");
+  window.setTimeout(() => coniferMiniOrigin?.classList.remove("is-burst"), 760);
+}
+
+function openConiferCult() {
+  clearConiferTimers();
+  coniferWidget?.classList.add("is-fullscreen");
+  coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
+  void coniferScene?.offsetWidth;
+  coniferScene?.classList.add("is-awake", "is-flight");
+  coniferTreeButton?.classList.remove("is-pressing");
+  coniferRitualTimers.push(window.setTimeout(() => coniferScene?.classList.add("is-title"), 360));
+  coniferRitualTimers.push(window.setTimeout(() => {
+    coniferScene?.classList.remove("is-title");
+    coniferScene?.classList.add("is-regalia");
+  }, 1250));
+  coniferRitualTimers.push(window.setTimeout(() => coniferScene?.classList.add("is-regalia-content"), 2050));
+}
+
+function closeConiferCult() {
+  clearConiferTimers();
+  coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
+  coniferHideTimer = window.setTimeout(() => {
+    coniferWidget?.classList.remove("is-fullscreen");
+    coniferPressCount = 0;
+  }, 760);
+}
+
 function setPage(activePage) {
   [authPage, welcomePage, dashboardPage, editorPage].forEach((page) => page.classList.toggle("is-active", page === activePage));
 }
 
 function showAuth({ skipIntro = false } = {}) {
   clearTransitionTimer();
+  setConiferAvailability(false);
   authForm.reset();
   authForm.classList.remove("is-ready", "is-authenticated", "is-success");
   authStatus.textContent = "";
@@ -472,6 +547,7 @@ function showDashboard(account) {
   renderCourse();
   renderStructure();
   setPage(dashboardPage);
+  syncConiferAvailability();
 }
 
 function logoutFrom(button) {
@@ -500,10 +576,12 @@ function setDashboardMode(nextMode) {
   adminMark.classList.toggle("is-admin-active", nextMode === "admin");
   const outgoing = dashboardMode === "admin" ? adminPanel : learningPanel;
   const incoming = nextMode === "admin" ? adminPanel : learningPanel;
+  if (nextMode === "admin") setConiferAvailability(false);
   outgoing.classList.add("is-leaving");
   incoming.classList.add("is-current");
   incoming.setAttribute("aria-hidden", "false");
   dashboardMode = nextMode;
+  if (nextMode === "learning") syncConiferAvailability();
   if (nextMode === "admin") {
     collapseAllStructure();
     renderStructure();
@@ -1341,6 +1419,7 @@ function transitionLearningTitle(title = "ОБУЧЕНИЕ") {
 }
 
 function renderCourse() {
+  syncConiferAvailability();
   courseBrowser.classList.remove("is-hidden");
   lessonReader.classList.remove("is-visible");
   lessonReader.setAttribute("aria-hidden", "true");
@@ -1368,6 +1447,7 @@ function renderCourse() {
       courseList.appendChild(button);
     });
     courseList.classList.remove("is-changing");
+    syncConiferAvailability();
   }, 90);
 }
 
@@ -1412,6 +1492,7 @@ function openLessonReader(lesson) {
   learningTitle.classList.add("is-reader-hidden");
   lessonReader.classList.add("is-visible");
   lessonReader.setAttribute("aria-hidden", "false");
+  syncConiferAvailability();
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
   renderLessonNavigation(lesson);
@@ -1963,6 +2044,27 @@ courseGuideBack.addEventListener("click", () => {
   renderCourse();
 });
 readerBack.addEventListener("click", renderCourse);
+
+coniferTreeButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (coniferWidget?.classList.contains("is-fullscreen")) return;
+  coniferTreeButton.classList.add("is-pressing");
+  window.setTimeout(() => coniferTreeButton.classList.remove("is-pressing"), 220);
+  coniferPressCount += 1;
+  if (coniferPressCount < 5) {
+    triggerConiferMiniBurst();
+    window.clearTimeout(coniferPressResetTimer);
+    coniferPressResetTimer = window.setTimeout(() => { coniferPressCount = 0; }, 3600);
+    return;
+  }
+  coniferPressCount = 0;
+  openConiferCult();
+});
+
+coniferBackButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  closeConiferCult();
+});
 previousLesson.addEventListener("click", () => {
   const previous = neighboringLesson(readerTitle.dataset.lessonId, -1);
   if (previous) openLessonReader(previous);
