@@ -745,7 +745,8 @@
 }
 
 .conifer-mini-origin.is-burst .conifer-mini-cone {
-  animation: conifer-mini-burst .6s cubic-bezier(.22, 1, .36, 1) both;
+  /* Short, continuous motion: no hard snap at launch or at the end of the trail. */
+  animation: conifer-mini-burst .56s cubic-bezier(.33, 1, .68, 1) both;
 }
 
 .conifer-mini-c1 { --mini-size: 34px; --mini-x: -18vw; --mini-y: -16vh; --mini-r: -31deg; --mini-delay: .02s; }
@@ -755,11 +756,21 @@
 .conifer-mini-c5 { --mini-size: 39px; --mini-x: 40vw; --mini-y: 8vh; --mini-r: 44deg; --mini-delay: .27s; }
 
 @keyframes conifer-mini-burst {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(.18) rotate(0deg); }
-  16% { opacity: .95; }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.18) rotate(0deg);
+  }
+  12% {
+    opacity: .95;
+    transform: translate(-50%, -50%) scale(.62) rotate(0deg);
+  }
+  72% {
+    opacity: .86;
+    transform: translate(calc(-50% + var(--mini-x)), calc(-50% + var(--mini-y))) scale(1.02) rotate(var(--mini-r));
+  }
   100% {
     opacity: 0;
-    transform: translate(calc(-50% + var(--mini-x)), calc(-50% + var(--mini-y))) scale(1) rotate(var(--mini-r));
+    transform: translate(calc(-50% + var(--mini-x)), calc(-50% + var(--mini-y))) scale(1.06) rotate(var(--mini-r));
   }
 }
 
