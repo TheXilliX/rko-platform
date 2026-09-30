@@ -177,6 +177,8 @@ let coniferPressCount = 0;
 let coniferPressResetTimer;
 let coniferRitualTimers = [];
 let coniferHideTimer;
+const CONIFER_REQUIRED_PRESSES = 5;
+const CONIFER_PRESS_WINDOW = 6000;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
@@ -426,6 +428,7 @@ function triggerConiferMiniBurst() {
 
 function openConiferCult() {
   clearConiferTimers();
+  coniferMiniOrigin?.classList.remove("is-burst");
   coniferWidget?.classList.add("is-fullscreen");
   coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
   void coniferScene?.offsetWidth;
@@ -441,10 +444,10 @@ function openConiferCult() {
 
 function closeConiferCult() {
   clearConiferTimers();
+  coniferPressCount = 0;
   coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
   coniferHideTimer = window.setTimeout(() => {
     coniferWidget?.classList.remove("is-fullscreen");
-    coniferPressCount = 0;
   }, 760);
 }
 
@@ -2050,11 +2053,11 @@ coniferTreeButton?.addEventListener("click", (event) => {
   if (coniferWidget?.classList.contains("is-fullscreen")) return;
   coniferTreeButton.classList.add("is-pressing");
   window.setTimeout(() => coniferTreeButton.classList.remove("is-pressing"), 220);
-  coniferPressCount += 1;
-  if (coniferPressCount < 5) {
+  coniferPressCount = Math.min(coniferPressCount + 1, CONIFER_REQUIRED_PRESSES);
+  if (coniferPressCount < CONIFER_REQUIRED_PRESSES) {
     triggerConiferMiniBurst();
     window.clearTimeout(coniferPressResetTimer);
-    coniferPressResetTimer = window.setTimeout(() => { coniferPressCount = 0; }, 3600);
+    coniferPressResetTimer = window.setTimeout(() => { coniferPressCount = 0; }, CONIFER_PRESS_WINDOW);
     return;
   }
   coniferPressCount = 0;

@@ -158,7 +158,8 @@
       width: var(--altar-size);
       height: var(--altar-size);
       pointer-events: none;
-      contain: layout paint;
+      contain: layout;
+      overflow: visible;
     }
 
     .conifer-particle {
@@ -727,7 +728,8 @@
   width: var(--altar-size);
   height: var(--altar-size);
   pointer-events: none;
-  contain: layout paint;
+  contain: layout;
+  overflow: visible;
 }
 
 .conifer-mini-cone {
@@ -743,14 +745,14 @@
 }
 
 .conifer-mini-origin.is-burst .conifer-mini-cone {
-  animation: conifer-mini-burst .68s cubic-bezier(.22, 1, .36, 1) both;
+  animation: conifer-mini-burst .6s cubic-bezier(.22, 1, .36, 1) both;
 }
 
-.conifer-mini-c1 { --mini-size: 34px; --mini-x: -20vw; --mini-y: -20vh; --mini-r: -31deg; --mini-delay: .02s; }
-.conifer-mini-c2 { --mini-size: 47px; --mini-x: 18vw; --mini-y: -28vh; --mini-r: 24deg; --mini-delay: .08s; }
-.conifer-mini-c3 { --mini-size: 28px; --mini-x: 35vw; --mini-y: -8vh; --mini-r: 68deg; --mini-delay: .14s; }
-.conifer-mini-c4 { --mini-size: 55px; --mini-x: -8vw; --mini-y: -36vh; --mini-r: -62deg; --mini-delay: .2s; }
-.conifer-mini-c5 { --mini-size: 39px; --mini-x: 48vw; --mini-y: -30vh; --mini-r: 44deg; --mini-delay: .27s; }
+.conifer-mini-c1 { --mini-size: 34px; --mini-x: -18vw; --mini-y: -16vh; --mini-r: -31deg; --mini-delay: .02s; }
+.conifer-mini-c2 { --mini-size: 47px; --mini-x: 18vw; --mini-y: -24vh; --mini-r: 24deg; --mini-delay: .08s; }
+.conifer-mini-c3 { --mini-size: 28px; --mini-x: 30vw; --mini-y: -3vh; --mini-r: 68deg; --mini-delay: .14s; }
+.conifer-mini-c4 { --mini-size: 55px; --mini-x: -10vw; --mini-y: -6vh; --mini-r: -62deg; --mini-delay: .2s; }
+.conifer-mini-c5 { --mini-size: 39px; --mini-x: 40vw; --mini-y: 8vh; --mini-r: 44deg; --mini-delay: .27s; }
 
 @keyframes conifer-mini-burst {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.18) rotate(0deg); }
@@ -780,9 +782,9 @@
 }
 
 @media (max-width: 650px) {
-  .conifer-mini-c1 { --mini-x: -26vw; --mini-y: -18vh; }
-  .conifer-mini-c2 { --mini-x: 24vw; --mini-y: -27vh; }
-  .conifer-mini-c3 { --mini-x: 42vw; --mini-y: -4vh; }
-  .conifer-mini-c4 { --mini-x: -12vw; --mini-y: -33vh; }
-  .conifer-mini-c5 { --mini-x: 54vw; --mini-y: -26vh; }
+  .conifer-mini-c1 { --mini-x: -26vw; --mini-y: -13vh; }
+  .conifer-mini-c2 { --mini-x: 24vw; --mini-y: -23vh; }
+  .conifer-mini-c3 { --mini-x: 42vw; --mini-y: -2vh; }
+  .conifer-mini-c4 { --mini-x: -12vw; --mini-y: -6vh; }
+  .conifer-mini-c5 { --mini-x: 54vw; --mini-y: 7vh; }
 }
