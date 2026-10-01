@@ -749,11 +749,11 @@
   animation: conifer-mini-burst .56s cubic-bezier(.33, 1, .68, 1) both;
 }
 
-.conifer-mini-c1 { --mini-size: 34px; --mini-x: -18vw; --mini-y: -16vh; --mini-r: -31deg; --mini-delay: .02s; }
-.conifer-mini-c2 { --mini-size: 47px; --mini-x: 18vw; --mini-y: -24vh; --mini-r: 24deg; --mini-delay: .08s; }
-.conifer-mini-c3 { --mini-size: 28px; --mini-x: 30vw; --mini-y: -3vh; --mini-r: 68deg; --mini-delay: .14s; }
-.conifer-mini-c4 { --mini-size: 55px; --mini-x: -10vw; --mini-y: -6vh; --mini-r: -62deg; --mini-delay: .2s; }
-.conifer-mini-c5 { --mini-size: 39px; --mini-x: 40vw; --mini-y: 8vh; --mini-r: 44deg; --mini-delay: .27s; }
+.conifer-mini-c1 { --mini-size: 34px; --mini-x: -48px; --mini-y: -150px; --mini-r: -31deg; --mini-delay: .02s; }
+.conifer-mini-c2 { --mini-size: 47px; --mini-x: 120px; --mini-y: -210px; --mini-r: 24deg; --mini-delay: .08s; }
+.conifer-mini-c3 { --mini-size: 28px; --mini-x: 190px; --mini-y: -30px; --mini-r: 68deg; --mini-delay: .14s; }
+.conifer-mini-c4 { --mini-size: 55px; --mini-x: -30px; --mini-y: -72px; --mini-r: -62deg; --mini-delay: .2s; }
+.conifer-mini-c5 { --mini-size: 39px; --mini-x: 250px; --mini-y: 42px; --mini-r: 44deg; --mini-delay: .27s; }
 
 @keyframes conifer-mini-burst {
   0% {
@@ -793,9 +793,9 @@
 }
 
 @media (max-width: 650px) {
-  .conifer-mini-c1 { --mini-x: -26vw; --mini-y: -13vh; }
-  .conifer-mini-c2 { --mini-x: 24vw; --mini-y: -23vh; }
-  .conifer-mini-c3 { --mini-x: 42vw; --mini-y: -2vh; }
-  .conifer-mini-c4 { --mini-x: -12vw; --mini-y: -6vh; }
-  .conifer-mini-c5 { --mini-x: 54vw; --mini-y: 7vh; }
+  .conifer-mini-c1 { --mini-x: -30px; --mini-y: -125px; }
+  .conifer-mini-c2 { --mini-x: 104px; --mini-y: -170px; }
+  .conifer-mini-c3 { --mini-x: 168px; --mini-y: -22px; }
+  .conifer-mini-c4 { --mini-x: -22px; --mini-y: -58px; }
+  .conifer-mini-c5 { --mini-x: 202px; --mini-y: 36px; }
 }

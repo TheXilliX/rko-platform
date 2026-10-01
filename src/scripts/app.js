@@ -419,6 +419,37 @@ function syncConiferAvailability() {
   setConiferAvailability(available);
 }
 
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randomizeConiferMiniPaths() {
+  const cones = coniferMiniOrigin?.querySelectorAll(".conifer-mini-cone");
+  if (!cones?.length) return;
+
+  const mobile = window.matchMedia("(max-width: 650px)").matches;
+  const width = Math.max(window.innerWidth || 0, 320);
+  const height = Math.max(window.innerHeight || 0, 568);
+  const maxRadius = mobile
+    ? Math.min(210, Math.max(150, width * .42))
+    : Math.min(250, Math.max(170, Math.min(width * .22, height * .3)));
+  const minX = mobile ? -34 : -52;
+  const maxX = mobile ? Math.min(220, width * .55) : Math.min(280, width * .24);
+  const minY = -Math.min(mobile ? 190 : 220, height * .3);
+  const maxY = mobile ? 42 : Math.min(58, height * .08);
+
+  cones.forEach((cone) => {
+    const angle = randomBetween(0, Math.PI * 2);
+    const radius = randomBetween(maxRadius * .56, maxRadius);
+    const x = Math.max(minX, Math.min(maxX, Math.cos(angle) * radius));
+    const y = Math.max(minY, Math.min(maxY, Math.sin(angle) * radius));
+    const rotation = randomBetween(-145, 145);
+    cone.style.setProperty("--mini-x", `${Math.round(x)}px`);
+    cone.style.setProperty("--mini-y", `${Math.round(y)}px`);
+    cone.style.setProperty("--mini-r", `${Math.round(rotation)}deg`);
+  });
+}
+
 function triggerConiferMiniBurst() {
   coniferMiniOrigin?.classList.remove("is-burst");
   void coniferMiniOrigin?.offsetWidth;
@@ -2055,6 +2086,7 @@ coniferTreeButton?.addEventListener("click", (event) => {
   window.setTimeout(() => coniferTreeButton.classList.remove("is-pressing"), 220);
   coniferPressCount = Math.min(coniferPressCount + 1, CONIFER_REQUIRED_PRESSES);
   if (coniferPressCount < CONIFER_REQUIRED_PRESSES) {
+    randomizeConiferMiniPaths();
     triggerConiferMiniBurst();
     window.clearTimeout(coniferPressResetTimer);
     coniferPressResetTimer = window.setTimeout(() => { coniferPressCount = 0; }, CONIFER_PRESS_WINDOW);
