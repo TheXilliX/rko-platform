@@ -2250,6 +2250,9 @@ function openLessonEditor(id) {
   editorLessonId = id;
   editorDraft = clone(found.item);
   editorDraft.blocks ??= [];
+  editorDraft.blocks.forEach((block) => {
+    if (block.type === "callout") normalizeCalloutBlock(block);
+  });
   editorDraft.allowDownloads ??= false;
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
