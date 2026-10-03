@@ -2768,3 +2768,73 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     transition-duration: .01ms;
   }
 }
+
+
+/* Final editor fixes: stable controls, direct block delete, and safe wrapping. */
+.lesson-block {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.lesson-block .block-editor,
+.lesson-block .block-editor > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.lesson-block .block-editor {
+  overflow: visible;
+}
+.lesson-block input,
+.lesson-block select,
+.lesson-block textarea,
+.lesson-block [contenteditable="true"],
+.lesson-block .rich-text {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.lesson-block [contenteditable="true"],
+.lesson-block .rich-text {
+  white-space: pre-wrap;
+}
+.block-more,
+.block-menu,
+.lesson-block.is-menu-open .block-menu {
+  display: none !important;
+}
+.block-delete {
+  display: grid;
+  grid-column: 4;
+  grid-row: 1;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--scarlet);
+  cursor: pointer;
+  transition: color .25s ease, transform .25s ease, opacity .25s ease;
+}
+.block-delete svg {
+  width: 20px;
+  height: 20px;
+}
+.block-delete:hover,
+.block-delete:focus-visible {
+  color: color-mix(in srgb, var(--scarlet) 76%, var(--text-primary));
+  transform: translateY(-1px) scale(1.06);
+}
+@media (max-width: 900px) {
+  .lesson-block .block-delete {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .lesson-block .block-editor {
+    grid-column: 2 / 4;
+  }
+}
