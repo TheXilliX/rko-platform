@@ -2154,7 +2154,7 @@ function closeBlockPicker() {
 
 function addLessonBlock(type) {
   const block = { id: uid("block"), type };
-  if (type === "heading") Object.assign(block, { level: "h1", text: "" });
+  if (type === "heading") Object.assign(block, { level: "h1", align: "left", text: "" });
   if (type === "text" || type === "callout") block.html = "";
   if (type === "callout") block.variant = "important";
   editorDraft.blocks.push(block);
