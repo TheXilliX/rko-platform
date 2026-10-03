@@ -1837,193 +1837,19 @@ function createReaderMediaPlayer(type, url) {
   const player = document.createElement("div");
   player.className = "reader-media-player";
   player.dataset.mediaType = type;
-  player.tabIndex = 0;
-  player.setAttribute("role", "group");
-  player.setAttribute("aria-label", type === "video" ? "Видеоплеер" : "Аудиоплеер");
 
   const media = document.createElement(type);
   media.className = "reader-media-element";
   media.src = url;
   media.preload = "metadata";
-  media.controls = false;
-  media.removeAttribute("controls");
-  media.tabIndex = 0;
-  media.setAttribute("controlslist", "nodownload noplaybackrate");
-  media.disablePictureInPicture = true;
+  media.controls = true;
+  media.setAttribute("controls", "");
   if (type === "video") {
     media.playsInline = true;
     media.setAttribute("playsinline", "");
   }
 
-  const icons = {
-    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.4v13.2L18.2 12 8 5.4Z"></path></svg>',
-    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5h3.2v13H8zM12.8 5.5H16v13h-3.2z"></path></svg>',
-    speaker: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2v5.6h3.3l4.4 3.6V5.6L7.3 9.2H4Z"></path><path d="M15.2 8.4a5.2 5.2 0 0 1 0 7.2M17.7 5.9a8.7 8.7 0 0 1 0 12.2" class="reader-icon-stroke"></path></svg>',
-    speakerOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2v5.6h3.3l4.4 3.6V5.6L7.3 9.2H4Z"></path><path d="m16 9 5 6m0-6-5 6" class="reader-icon-stroke"></path></svg>',
-    fullscreen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4H4v4.5h2V6h2.5V4ZM15.5 4v2H18v2.5h2V4h-4.5ZM4 15.5V20h4.5v-2H6v-2.5H4ZM18 15.5V18h-2.5v2H20v-4.5h-2Z"></path></svg>'
-  };
-
-  const controls = document.createElement("div");
-  controls.className = "reader-media-controls";
-
-  const play = document.createElement("button");
-  play.type = "button";
-  play.className = "reader-media-control reader-media-play";
-  play.setAttribute("aria-label", "Воспроизвести");
-
-  const progress = document.createElement("input");
-  progress.type = "range";
-  progress.className = "reader-media-progress";
-  progress.min = "0";
-  progress.max = "1000";
-  progress.value = "0";
-  progress.step = "1";
-  progress.setAttribute("aria-label", "Позиция воспроизведения");
-
-  const time = document.createElement("span");
-  time.className = "reader-media-time";
-  time.textContent = "0:00 / 0:00";
-
-  const volumeWrap = document.createElement("span");
-  volumeWrap.className = "reader-media-volume-wrap";
-  const volumeButton = document.createElement("button");
-  volumeButton.type = "button";
-  volumeButton.className = "reader-media-control reader-media-volume-button";
-  volumeButton.setAttribute("aria-label", "Громкость");
-  const volumePanel = document.createElement("span");
-  volumePanel.className = "reader-media-volume-panel";
-  const volume = document.createElement("input");
-  volume.type = "range";
-  volume.className = "reader-media-volume";
-  volume.min = "0";
-  volume.max = "1";
-  volume.step = "0.05";
-  volume.value = "1";
-  volume.setAttribute("aria-label", "Громкость");
-  volumePanel.appendChild(volume);
-  volumeWrap.append(volumeButton, volumePanel);
-
-  const fullscreen = document.createElement("button");
-  fullscreen.type = "button";
-  fullscreen.className = "reader-media-control reader-media-fullscreen";
-  fullscreen.setAttribute("aria-label", "Полный экран");
-  fullscreen.innerHTML = icons.fullscreen;
-  if (type !== "video") fullscreen.hidden = true;
-
-  const center = document.createElement("button");
-  center.type = "button";
-  center.className = "reader-media-center";
-  center.setAttribute("aria-label", "Воспроизвести");
-  center.innerHTML = icons.play;
-  if (type !== "video") center.hidden = true;
-
-  let centerTimer;
-  const flashCenter = () => {
-    if (type !== "video") return;
-    player.classList.remove("is-center-flash");
-    void player.offsetWidth;
-    player.classList.add("is-center-flash");
-    window.clearTimeout(centerTimer);
-    centerTimer = window.setTimeout(() => player.classList.remove("is-center-flash"), 520);
-  };
-  const syncPlay = () => {
-    const playing = !media.paused && !media.ended;
-    play.innerHTML = playing ? icons.pause : icons.play;
-    center.innerHTML = playing ? icons.pause : icons.play;
-    play.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
-    center.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
-    player.classList.toggle("is-playing", playing);
-    player.classList.toggle("is-paused", !playing);
-  };
-  const syncTime = () => {
-    const duration = Number.isFinite(media.duration) ? media.duration : 0;
-    const current = Number.isFinite(media.currentTime) ? media.currentTime : 0;
-    progress.value = duration ? String(Math.round((current / duration) * 1000)) : "0";
-    time.textContent = formatMediaTime(current) + " / " + formatMediaTime(duration);
-  };
-  const syncVolume = () => {
-    const silent = media.muted || media.volume === 0;
-    volumeButton.innerHTML = silent ? icons.speakerOff : icons.speaker;
-    volumeButton.setAttribute("aria-label", silent ? "Звук выключен" : "Громкость");
-    volume.value = silent ? "0" : String(media.volume);
-  };
-  const revealControls = () => {
-    player.classList.remove("is-idle");
-    window.clearTimeout(player._idleTimer);
-    player._idleTimer = window.setTimeout(() => {
-      player.classList.add("is-idle");
-    }, 2200);
-  };
-  const togglePlayback = () => {
-    if (media.paused) media.play().catch(() => {});
-    else media.pause();
-    syncPlay();
-    flashCenter();
-    revealControls();
-  };
-
-  play.addEventListener("click", (event) => {
-    event.stopPropagation();
-    togglePlayback();
-  });
-  center.addEventListener("click", (event) => {
-    event.stopPropagation();
-    togglePlayback();
-  });
-  media.addEventListener("click", (event) => {
-    event.stopPropagation();
-    togglePlayback();
-  });
-  progress.addEventListener("input", () => {
-    if (Number.isFinite(media.duration) && media.duration > 0) {
-      media.currentTime = (Number(progress.value) / 1000) * media.duration;
-    }
-    revealControls();
-  });
-  volumeButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    volumeWrap.classList.toggle("is-open");
-    revealControls();
-  });
-  volume.addEventListener("input", () => {
-    media.volume = Number(volume.value);
-    media.muted = media.volume === 0;
-    syncVolume();
-    revealControls();
-  });
-  fullscreen.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (player.requestFullscreen) await player.requestFullscreen();
-      else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen();
-    } catch {}
-    revealControls();
-  });
-  player.addEventListener("pointermove", revealControls, { passive: true });
-  player.addEventListener("pointerdown", revealControls, { passive: true });
-  player.addEventListener("touchstart", revealControls, { passive: true });
-  player.addEventListener("keydown", (event) => {
-    if (event.code !== "Space") return;
-    if (event.target.matches("button, input, textarea, select, [contenteditable=\"true\"]")) return;
-    event.preventDefault();
-    togglePlayback();
-  });
-  media.addEventListener("play", syncPlay);
-  media.addEventListener("pause", syncPlay);
-  media.addEventListener("ended", () => {
-    syncPlay();
-    revealControls();
-  });
-  media.addEventListener("timeupdate", syncTime);
-  media.addEventListener("loadedmetadata", syncTime);
-  media.addEventListener("volumechange", syncVolume);
-  syncPlay();
-  syncVolume();
-  syncTime();
-  controls.append(play, progress, time, volumeWrap, fullscreen);
-  player.append(media, center, controls);
-  revealControls();
+  player.appendChild(media);
   return player;
 }
 
