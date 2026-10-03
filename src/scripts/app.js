@@ -1183,7 +1183,17 @@ function hasUnsavedEditorChanges() {
 
 function openExitConfirm() {
   if (!exitConfirmLayer) return;
+  exitConfirmLayer.dataset.mode = "structure";
   exitConfirmCopy.textContent = "У вас есть несохранённые изменения. Что сделать перед выходом?";
+  exitConfirmLayer.classList.add("is-visible");
+  exitConfirmLayer.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => exitConfirmCancel?.focus(), 100);
+}
+
+function openEditorExitConfirm() {
+  if (!exitConfirmLayer) return;
+  exitConfirmLayer.dataset.mode = "editor";
+  exitConfirmCopy.textContent = "В уроке есть несохранённые изменения. Что сделать перед выходом?";
   exitConfirmLayer.classList.add("is-visible");
   exitConfirmLayer.setAttribute("aria-hidden", "false");
   window.setTimeout(() => exitConfirmCancel?.focus(), 100);
@@ -1192,6 +1202,7 @@ function openExitConfirm() {
 function closeExitConfirm() {
   exitConfirmLayer?.classList.remove("is-visible");
   exitConfirmLayer?.setAttribute("aria-hidden", "true");
+  if (exitConfirmLayer) delete exitConfirmLayer.dataset.mode;
 }
 
 function leaveAdmin({ save = false } = {}) {
@@ -2149,15 +2160,16 @@ function hasUnsavedEditorChanges() {
   return Boolean(editorDraft && editorOriginal && JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal));
 }
 
-function leaveEditorToCourse() {
-  if (hasUnsavedEditorChanges()) {
-    showNotice("СНАЧАЛА СОХРАНИ УРОК", "error");
+function leaveEditorToCourse({ force = false } = {}) {
+  if (!force && hasUnsavedEditorChanges()) {
+    openEditorExitConfirm();
     return;
   }
   editorLessonId = null;
   editorDraft = null;
   editorOriginal = null;
   coursePath = [];
+  closeExitConfirm();
   setPage(dashboardPage);
   renderCourse();
   if (dashboardMode === "admin") setDashboardMode("learning");
@@ -2577,8 +2589,21 @@ adminMark.addEventListener("click", () => {
   setDashboardMode(dashboardMode === "admin" ? "learning" : "admin");
 });
 exitConfirmCancel?.addEventListener("click", closeExitConfirm);
-exitConfirmDiscard?.addEventListener("click", () => leaveAdmin({ save: false }));
-exitConfirmSave?.addEventListener("click", () => leaveAdmin({ save: true }));
+exitConfirmDiscard?.addEventListener("click", () => {
+  if (exitConfirmLayer?.dataset.mode === "editor") {
+    leaveEditorToCourse({ force: true });
+    return;
+  }
+  leaveAdmin({ save: false });
+});
+exitConfirmSave?.addEventListener("click", () => {
+  if (exitConfirmLayer?.dataset.mode === "editor") {
+    saveEditorLesson();
+    if (!hasUnsavedEditorChanges()) leaveEditorToCourse({ force: true });
+    return;
+  }
+  leaveAdmin({ save: true });
+});
 exitConfirmLayer?.addEventListener("click", (event) => { if (event.target === exitConfirmLayer) closeExitConfirm(); });
 adminTabs.forEach((tab) => tab.addEventListener("click", () => {
   adminTabs.forEach((item) => item.classList.toggle("is-current", item === tab));
