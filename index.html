@@ -92,6 +92,13 @@
             <button class="reader-back" id="readerBack" type="button">← НАЗАД К МОДУЛЮ</button>
             <h2 class="reader-title" id="readerTitle"></h2>
             <div class="reader-content" id="readerContent"></div>
+            <aside class="reader-program" id="readerProgram" aria-label="Содержание курса">
+              <div class="reader-program-heading">
+                <p class="reader-program-kicker">НАВИГАЦИЯ</p>
+                <h3>СОДЕРЖАНИЕ КУРСА</h3>
+              </div>
+              <div class="reader-program-list" id="readerProgramList"></div>
+            </aside>
             <div class="reader-navigation" aria-label="Навигация по урокам">
               <button class="reader-nav-button" id="previousLesson" type="button">← НАЗАД</button>
               <div class="lesson-progress" id="lessonProgress" aria-label="Прогресс уроков"></div>
@@ -289,6 +296,8 @@
         <div class="account-nav" aria-label="Аккаунт">
           <span>ВЛАД</span><span class="nav-dot" aria-hidden="true"></span>
           <span class="editor-admin-mark" id="editorAccountRole">АДМИН</span><span class="nav-dot" aria-hidden="true"></span>
+          <button class="editor-admin-button nav-action" id="editorAdminButton" type="button">ADMIN</button>
+          <span class="nav-dot" aria-hidden="true"></span>
           <button class="logout-button nav-action" id="editorLogoutButton" type="button">ВЫЙТИ</button>
         </div>
       </header>
