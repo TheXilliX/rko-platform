@@ -2699,7 +2699,7 @@ readerProgramList?.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-program-toggle]");
   if (toggle) {
     const id = toggle.dataset.programToggle;
-    const children = toggle.parentElement?.querySelector(":scope > .reader-program-children");
+    const children = toggle.nextElementSibling;
     const expanded = toggle.getAttribute("aria-expanded") === "true";
     toggle.setAttribute("aria-expanded", String(!expanded));
     children?.classList.toggle("is-collapsed", expanded);
