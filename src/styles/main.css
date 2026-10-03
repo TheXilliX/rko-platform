@@ -2412,3 +2412,359 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   .progress-dot { width: 11px; height: 11px; }
   .settings-card { padding: 20px; }
 }
+
+
+/* Editor polish: direct structure actions, independent dirty states, and safe reader wrapping. */
+.structure-table-head,
+.structure-row {
+  grid-template-columns: minmax(300px, 1fr) 150px minmax(186px, 224px);
+}
+
+.structure-table-head > span:nth-child(2),
+.row-status {
+  justify-self: center;
+  text-align: center;
+}
+
+.structure-table-head > span:last-child {
+  justify-self: end;
+}
+
+.row-status {
+  min-width: 112px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.row-status > span {
+  display: inline-block;
+}
+
+.status-transition {
+  animation: status-crossfade .65s ease both;
+}
+
+@keyframes status-crossfade {
+  from { opacity: 0; filter: blur(4px); transform: translateY(2px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+.row-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.structure-icon-button,
+.visibility-button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color .55s ease, opacity .55s ease, filter .55s ease, transform .2s ease;
+}
+
+.structure-icon-button svg,
+.visibility-button svg {
+  width: 21px;
+  height: 21px;
+  transition: color .55s ease, opacity .55s ease, filter .55s ease, transform .2s ease;
+}
+
+.structure-icon-button:hover,
+.structure-icon-button:focus-visible,
+.visibility-button:hover,
+.visibility-button:focus-visible {
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.structure-icon-button:active,
+.visibility-button:active {
+  transform: scale(.9);
+}
+
+.structure-icon-button.is-disabled {
+  opacity: .22;
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.structure-icon-button.is-active {
+  color: var(--green);
+  opacity: 1;
+  filter: blur(0);
+}
+
+.delete-button {
+  color: var(--scarlet);
+}
+
+.eye-svg .eye-slash {
+  opacity: 0;
+  stroke-dasharray: 25;
+  stroke-dashoffset: 25;
+  transition: opacity .55s ease, stroke-dashoffset .55s ease;
+}
+
+.eye-svg.is-closed .eye-slash {
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
+.structure-save-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 30px;
+}
+
+.structure-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.unsaved-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--amber);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  opacity: 0;
+  filter: blur(5px);
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity .65s ease, filter .65s ease, transform .65s ease;
+}
+
+.unsaved-indicator::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.unsaved-indicator.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+
+.add-button {
+  transition: color .35s ease, opacity .35s ease, transform .2s cubic-bezier(.22, 1, .36, 1);
+}
+
+.add-button:active {
+  transform: translateY(1px) scale(.94);
+}
+
+.add-lesson-button:disabled {
+  color: var(--text-soft);
+  opacity: .32;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.editor-state {
+  transition: color .55s ease, opacity .55s ease, filter .55s ease;
+}
+
+.editor-state > span {
+  display: inline-block;
+}
+
+.editor-state.is-changed {
+  color: var(--amber);
+  animation: status-crossfade .65s ease both;
+}
+
+.editor-dirty-indicator {
+  margin-top: -4px;
+  font-size: .6rem;
+}
+
+.confirm-kicker {
+  display: none;
+}
+
+.confirm-card {
+  padding-top: 34px;
+}
+
+.exit-confirm-actions {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.exit-confirm-actions button {
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: .78rem;
+}
+
+.exit-confirm-discard {
+  color: var(--scarlet);
+  border: 0;
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.reader-content,
+.reader-block,
+.reader-block--text,
+.callout-body,
+.rich-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.reader-content {
+  overflow-x: hidden;
+}
+
+.reader-block--text {
+  text-align: left;
+}
+
+.reader-block--text ul,
+.reader-block--text ol,
+.callout-body ul,
+.callout-body ol,
+.rich-text ul,
+.rich-text ol {
+  margin: 1em 0;
+  padding-left: 1.45em;
+  text-align: left;
+  list-style-position: outside;
+}
+
+.reader-block--text li,
+.callout-body li,
+.rich-text li {
+  padding-left: .15em;
+}
+
+.rich-text {
+  overflow-x: hidden;
+  text-align: left;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .structure-table-head {
+    display: none;
+  }
+
+  .structure-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 76px;
+    padding: 8px 4px;
+  }
+
+  .row-main {
+    grid-column: 1;
+    grid-row: 1;
+    padding-right: 8px;
+  }
+
+  .row-status {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    min-width: 0;
+    font-size: .58rem;
+  }
+
+  .row-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    gap: 0;
+    padding-top: 10px;
+  }
+
+  .structure-icon-button,
+  .visibility-button {
+    width: 31px;
+    height: 31px;
+    flex-basis: 31px;
+  }
+
+  .structure-icon-button svg,
+  .visibility-button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .structure-actions {
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .unsaved-indicator {
+    max-width: 46%;
+    line-height: 1.35;
+  }
+
+  .structure-save-buttons {
+    gap: 12px;
+  }
+
+  .exit-confirm-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .exit-confirm-actions button {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .row-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+  }
+
+  .row-main {
+    grid-template-columns: 24px 24px minmax(0, 1fr);
+  }
+
+  .structure-save-buttons {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-transition,
+  .editor-state.is-changed {
+    animation: none;
+  }
+
+  .unsaved-indicator,
+  .eye-svg .eye-slash,
+  .structure-icon-button,
+  .visibility-button,
+  .editor-state {
+    transition-duration: .01ms;
+  }
+}
