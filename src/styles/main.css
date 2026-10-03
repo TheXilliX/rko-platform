@@ -2978,3 +2978,351 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     line-height: 1.72;
   }
 }
+
+
+/* Reader program, custom lesson media, and editor callout controls. */
+.callout-editor-settings {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.callout-setting-label {
+  color: var(--text-soft);
+  font: 700 .62rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.callout-icon-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.callout-icon-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 900;
+  cursor: pointer;
+  transition: color .25s ease, border-color .25s ease, background .25s ease, transform .25s ease;
+}
+.callout-icon-button:hover,
+.callout-icon-button:focus-visible {
+  border-color: var(--amber);
+  color: var(--amber);
+  transform: translateY(-1px);
+}
+.callout-icon-button.is-active {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  color: var(--green);
+}
+.callout-label-input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: 700 .72rem "Urbanist", sans-serif;
+  letter-spacing: .03em;
+}
+.callout-label-input:focus {
+  border-color: var(--green);
+}
+.callout-rich-text {
+  min-height: 82px;
+}
+.reader-block--callout {
+  width: 100%;
+  max-width: 900px;
+}
+.reader-block--text,
+.callout-body {
+  white-space: pre-wrap;
+}
+.reader-block--text > :first-child,
+.callout-body > :first-child {
+  margin-top: 0;
+}
+.reader-block--text > :last-child,
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* The reader uses a desktop-only course outline beside the lesson. */
+.lesson-reader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  align-content: start;
+  column-gap: clamp(26px, 4.2vw, 70px);
+  width: min(100%, 1320px);
+  max-width: 1320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.lesson-reader > .reader-back,
+.lesson-reader > .reader-title,
+.lesson-reader > .reader-content,
+.lesson-reader > .reader-navigation {
+  grid-column: 1;
+  width: 100%;
+  max-width: 900px;
+  margin-left: 0;
+  margin-right: 0;
+}
+.lesson-reader > .reader-title {
+  text-align: center;
+}
+.lesson-reader > .reader-content {
+  margin-top: 58px;
+}
+.reader-program {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  align-self: start;
+  position: sticky;
+  top: 10px;
+  min-width: 0;
+  max-height: calc(100svh - 34px);
+  overflow-y: auto;
+  padding: 18px 0 22px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.reader-program::-webkit-scrollbar {
+  display: none;
+}
+.reader-program-heading {
+  margin-bottom: 18px;
+}
+.reader-program-kicker {
+  margin: 0 0 8px;
+  color: var(--text-soft);
+  font: 700 .62rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: .14em;
+}
+.reader-program-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: .86rem;
+  letter-spacing: .09em;
+}
+.reader-program-list {
+  display: grid;
+  gap: 3px;
+}
+.reader-program-group {
+  min-width: 0;
+}
+.reader-program-toggle,
+.reader-program-lesson {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.reader-program-toggle {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 7px;
+  color: var(--text-primary);
+  font-size: .77rem;
+  font-weight: 850;
+  letter-spacing: .015em;
+  transition: color .28s ease, background .28s ease;
+}
+.reader-program-toggle:hover,
+.reader-program-toggle:focus-visible {
+  background: color-mix(in srgb, var(--green) 7%, transparent);
+  color: var(--green);
+}
+.reader-program-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .35s ease, opacity .35s ease;
+}
+.reader-program-toggle[aria-expanded="true"] .reader-program-chevron {
+  transform: rotate(45deg);
+}
+.reader-program-group-title,
+.reader-program-lesson-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reader-program-group-count {
+  color: var(--text-soft);
+  font: 500 .58rem "DM Mono", ui-monospace, monospace;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+.reader-program-children {
+  display: grid;
+  gap: 2px;
+  max-height: 1600px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height .4s ease, opacity .3s ease;
+}
+.reader-program-children.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+.reader-program-group--module > .reader-program-toggle {
+  padding-left: 24px;
+  font-size: .74rem;
+  font-weight: 750;
+}
+.reader-program-lesson {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 8px 7px 42px;
+  color: var(--text-secondary);
+  font-size: .73rem;
+  line-height: 1.35;
+  transition: color .28s ease, background .28s ease, transform .28s ease;
+}
+.reader-program-lesson:hover,
+.reader-program-lesson:focus-visible {
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+  color: var(--text-primary);
+}
+.reader-program-lesson.is-current {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-weight: 800;
+}
+.reader-program-lesson-state {
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  transition: background .3s ease, border-color .3s ease, transform .3s ease;
+}
+.reader-program-lesson.is-visited .reader-program-lesson-state,
+.reader-program-lesson.is-completed .reader-program-lesson-state {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 70%, transparent);
+}
+.reader-program-lesson.is-completed .reader-program-lesson-state {
+  transform: scale(.78);
+}
+
+.reader-media-player {
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--milk));
+  text-align: left;
+}
+.reader-media-element {
+  display: block;
+  width: 100%;
+  max-height: min(68vh, 640px);
+  background: #202120;
+  object-fit: contain;
+}
+.reader-media-player[data-media-type="audio"] {
+  padding-top: 22px;
+}
+.reader-media-player[data-media-type="audio"] .reader-media-element {
+  display: none;
+}
+.reader-media-controls {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto auto minmax(70px, 110px) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+.reader-media-control {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 3px 5px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: 800 .62rem "DM Mono", ui-monospace, monospace;
+  cursor: pointer;
+  transition: color .25s ease, transform .25s ease;
+}
+.reader-media-control:hover,
+.reader-media-control:focus-visible {
+  color: var(--green);
+}
+.reader-media-control:active {
+  transform: scale(.92);
+}
+.reader-media-progress,
+.reader-media-volume {
+  width: 100%;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.reader-media-time {
+  color: var(--text-soft);
+  font: 500 .62rem "DM Mono", ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+.lesson-reader .reader-title,
+.lesson-reader .reader-content {
+  -webkit-user-select: none;
+  user-select: none;
+}
+@media (max-width: 1020px) {
+  .lesson-reader {
+    display: block;
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .reader-program {
+    display: none;
+  }
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    width: min(100%, 900px);
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+@media (max-width: 620px) {
+  .reader-media-controls {
+    grid-template-columns: auto minmax(60px, 1fr) auto auto;
+  }
+  .reader-media-volume {
+    display: none;
+  }
+  .reader-media-fullscreen {
+    grid-column: 4;
+  }
+}
+
+.editor-admin-button { color: var(--amber); }
+.editor-admin-button:hover, .editor-admin-button:focus-visible { color: var(--green); }
