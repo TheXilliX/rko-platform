@@ -116,8 +116,8 @@
               <div class="structure-heading">
                 <h2>СТРУКТУРА КУРСА</h2>
                 <div class="structure-add-actions">
-                  <button class="add-button" id="addButton" type="button">+ ДОБАВИТЬ</button>
-                  <button class="add-button add-lesson-button" id="addLessonButton" type="button">+ УРОК В РАЗДЕЛ</button>
+                  <button class="add-button" id="addButton" type="button">+ РАЗДЕЛ / МОДУЛЬ</button>
+                  <button class="add-button add-lesson-button" id="addLessonButton" type="button" disabled>+ УРОК</button>
                 </div>
               </div>
 
@@ -125,15 +125,17 @@
                 <div class="structure-table-head" aria-hidden="true">
                   <span>НАЗВАНИЕ</span>
                   <span>СТАТУС</span>
-                  <span>ВИДИМОСТЬ</span>
                   <span>ДЕЙСТВИЯ</span>
                 </div>
                 <div class="structure-rows" id="structureRows"></div>
               </div>
 
               <div class="structure-actions">
-                <button class="cancel-button" id="cancelStructure" type="button">ОТМЕНИТЬ</button>
-                <button class="save-button" id="saveStructure" type="button">СОХРАНИТЬ</button>
+                <span class="unsaved-indicator" id="structureDirtyIndicator" role="status" aria-live="polite">НЕ СОХРАНЕНО</span>
+                <div class="structure-save-buttons">
+                  <button class="cancel-button" id="cancelStructure" type="button">ОТМЕНИТЬ</button>
+                  <button class="save-button" id="saveStructure" type="button">СОХРАНИТЬ</button>
+                </div>
               </div>
             </section>
 
@@ -309,7 +311,8 @@
           <aside class="editor-sidebar">
             <div class="editor-setting">
               <span>СОСТОЯНИЕ</span>
-              <strong class="editor-state" id="editorState"><i></i>СОХРАНЕНО</strong>
+              <strong class="editor-state" id="editorState"><i></i><span>СОХРАНЕНО</span></strong>
+              <span class="unsaved-indicator editor-dirty-indicator" id="editorDirtyIndicator" role="status" aria-live="polite">НЕ СОХРАНЕНО</span>
             </div>
             <div class="editor-setting">
               <span>ВИДИМОСТЬ</span>
@@ -335,7 +338,6 @@
 
     <div class="confirm-layer" id="confirmLayer" aria-hidden="true">
       <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
-        <p class="confirm-kicker">УДАЛЕНИЕ</p>
         <h2 id="confirmTitle">УДАЛИТЬ ЭЛЕМЕНТ?</h2>
         <p class="confirm-copy" id="confirmCopy"></p>
         <div class="confirm-actions">
@@ -345,9 +347,20 @@
       </div>
     </div>
 
+    <div class="confirm-layer exit-confirm-layer" id="exitConfirmLayer" aria-hidden="true">
+      <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="exitConfirmTitle">
+        <h2 id="exitConfirmTitle">ВЫЙТИ ИЗ УПРАВЛЕНИЯ?</h2>
+        <p class="confirm-copy" id="exitConfirmCopy">У вас есть несохранённые изменения.</p>
+        <div class="confirm-actions exit-confirm-actions">
+          <button class="confirm-no" id="exitConfirmCancel" type="button">ЗАКРЫТЬ</button>
+          <button class="exit-confirm-discard" id="exitConfirmDiscard" type="button">НЕ СОХРАНЯТЬ</button>
+          <button class="confirm-yes" id="exitConfirmSave" type="button">СОХРАНИТЬ И ВЫЙТИ</button>
+        </div>
+      </div>
+    </div>
+
     <div class="block-picker-layer" id="blockPickerLayer" aria-hidden="true">
       <div class="block-picker" role="dialog" aria-modal="true" aria-labelledby="blockPickerTitle">
-        <p class="confirm-kicker">НОВЫЙ БЛОК</p>
         <h2 id="blockPickerTitle">ЧТО ДОБАВИТЬ?</h2>
         <div class="block-options">
           <button type="button" data-block-type="heading">ЗАГОЛОВОК</button>
