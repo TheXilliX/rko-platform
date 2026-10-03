@@ -720,7 +720,7 @@ function renderStructure() {
         '<div class="row-main"><button class="drag-handle" type="button" data-action="drag" aria-label="Переместить"><span class="drag-mark" aria-hidden="true">⠿</span></button>'
         + collapseMarkup
         + '<div class="row-select" data-action="select" role="button" tabindex="0" aria-pressed="' + (selectedId === item.id) + '"><span class="row-title"></span></div></div>'
-        + '<span class="row-status row-status--' + status.tone + (transitionId === item.id ? " status-transition" : "") + '><i></i><span>' + status.label + '</span></span>'
+        + '<span class="row-status row-status--' + status.tone + (transitionId === item.id ? " status-transition" : "") + '"><i></i><span>' + status.label + '</span></span>'
         + '<div class="row-actions" aria-label="Действия">'
         + '<button class="visibility-button" type="button" data-action="visibility" aria-label="' + eyeLabel + '"><svg class="eye-svg' + eyeClass + '" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><path class="eye-slash" d="M4 4l16 16" stroke="currentColor" stroke-width="1.5"/></svg></button>'
         + '<button class="structure-icon-button rename-button" type="button" data-action="rename" aria-label="Переименовать"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 16.5V20h3.5L18.8 8.7l-3.5-3.5L4 16.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m14.2 6.7 3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>'
