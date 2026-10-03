@@ -40,6 +40,7 @@ const readerBack = $("#readerBack");
 const readerTitle = $("#readerTitle");
 const readerContent = $("#readerContent");
 const readerProgram = $("#readerProgram");
+const readerProgramSection = $("#readerProgramSection");
 const readerProgramList = $("#readerProgramList");
 const structureRows = $("#structureRows");
 const addButton = $("#addButton");
@@ -60,9 +61,7 @@ const exitConfirmDiscard = $("#exitConfirmDiscard");
 const exitConfirmSave = $("#exitConfirmSave");
 const editorPage = $("#editorPage");
 const editorLogoutButton = $("#editorLogoutButton");
-const editorAdminButton = $("#editorAdminButton");
 const editorRoleLabel = $("#editorRoleLabel");
-const editorAccountRole = $("#editorAccountRole");
 const editorBack = $("#editorBack");
 const editorPath = $("#editorPath");
 const lessonNameInput = $("#lessonNameInput");
@@ -133,7 +132,7 @@ const SETTINGS_KEY = "rko-platform-settings-v1";
 const PROGRESS_KEY = "rko-lesson-progress-v1";
 const ACCOUNT_STORAGE_KEY = "rko-platform-accounts-v1";
 const SESSION_KEY = "rko-platform-session-v1";
-const READER_PROGRAM_COLLAPSED_KEY = "rko-reader-program-collapsed-v1";
+const READER_PROGRAM_COLLAPSED_KEY = "rko-reader-program-state-v2";
 const DEFAULT_SETTINGS = { newItemsVisible: false, newItemsAllowDownloads: true, primaryColor: "#FFAE42", secondaryColor: "#2F7D57" };
 const HIGHLIGHT_COLORS = [
   { name: "МЯГКИЙ ЗЕЛЁНЫЙ", value: "#DDEBDD" },
@@ -1720,7 +1719,24 @@ function countReaderLessons(item) {
 function renderReaderProgram(currentLessonId) {
   if (!readerProgramList) return;
   readerProgramList.innerHTML = "";
-  const activePath = new Set((hierarchyFor(currentLessonId) || []).map((item) => item.id));
+
+  const path = hierarchyFor(currentLessonId) || [];
+  const section = path.find((item) => item.type === "section") || path[0];
+  const currentModule = path.find((item) => item.type === "module") || null;
+  if (readerProgramSection) readerProgramSection.textContent = section?.title || "";
+  if (!section) return;
+
+  const visibleChildren = (section.children || [])
+    .filter((child) => child.visible !== false && isEffectivelyVisible(child.id));
+  const moduleIds = visibleChildren.filter((child) => child.type === "module").map((child) => child.id);
+  let storedState = true;
+  try {
+    storedState = localStorage.getItem(readerProgramStorageKey()) !== null;
+  } catch {}
+  if (!storedState) {
+    readerProgramCollapsed = new Set(moduleIds.filter((id) => id !== currentModule?.id));
+    saveReaderProgramCollapsed();
+  }
 
   const appendLesson = (lesson, host) => {
     const button = document.createElement("button");
@@ -1728,17 +1744,17 @@ function renderReaderProgram(currentLessonId) {
     button.className = "reader-program-lesson";
     button.dataset.programLesson = lesson.id;
     button.classList.toggle("is-current", lesson.id === currentLessonId);
-    const state = lessonProgressState[lesson.id] || "new";
-    button.classList.add("is-" + state);
-    button.innerHTML = '<span class="reader-program-lesson-state" aria-hidden="true"></span><span class="reader-program-lesson-title"></span>';
+    button.innerHTML = '<span class="reader-program-lesson-title"></span>';
     button.querySelector(".reader-program-lesson-title").textContent = lesson.title || "БЕЗ НАЗВАНИЯ";
     button.setAttribute("aria-current", lesson.id === currentLessonId ? "page" : "false");
     host.appendChild(button);
   };
 
   const appendGroup = (item, host, depth = 0) => {
-    const children = (item.children || []).filter((child) => child.visible !== false && isEffectivelyVisible(child.id));
+    const children = (item.children || [])
+      .filter((child) => child.visible !== false && isEffectivelyVisible(child.id));
     if (!children.length) return;
+
     const group = document.createElement("section");
     group.className = "reader-program-group reader-program-group--" + item.type;
     group.dataset.programGroup = item.id;
@@ -1748,12 +1764,10 @@ function renderReaderProgram(currentLessonId) {
     toggle.type = "button";
     toggle.className = "reader-program-toggle";
     toggle.dataset.programToggle = item.id;
-    const expanded = activePath.has(item.id) || !readerProgramCollapsed.has(item.id);
+    const expanded = !readerProgramCollapsed.has(item.id);
     toggle.setAttribute("aria-expanded", String(expanded));
-    toggle.innerHTML = '<span class="reader-program-chevron" aria-hidden="true"></span><span class="reader-program-group-title"></span><span class="reader-program-group-count"></span>';
+    toggle.innerHTML = '<span class="reader-program-chevron" aria-hidden="true"></span><span class="reader-program-group-title"></span>';
     toggle.querySelector(".reader-program-group-title").textContent = item.title || "БЕЗ НАЗВАНИЯ";
-    const lessonCount = countReaderLessons(item);
-    toggle.querySelector(".reader-program-group-count").textContent = lessonCount + " " + (lessonCount === 1 ? "УРОК" : "УРОКОВ");
 
     const childList = document.createElement("div");
     childList.className = "reader-program-children";
@@ -1766,7 +1780,7 @@ function renderReaderProgram(currentLessonId) {
     host.appendChild(group);
   };
 
-  savedStructure.filter((item) => item.visible !== false && isEffectivelyVisible(item.id)).forEach((item) => {
+  visibleChildren.forEach((item) => {
     if (item.type === "lesson") appendLesson(item, readerProgramList);
     else appendGroup(item, readerProgramList, 0);
   });
@@ -1819,6 +1833,14 @@ function createReaderMediaPlayer(type, url) {
     media.setAttribute("playsinline", "");
   }
 
+  const icons = {
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.4v13.2L18.2 12 8 5.4Z"></path></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5h3.2v13H8zM12.8 5.5H16v13h-3.2z"></path></svg>',
+    speaker: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2v5.6h3.3l4.4 3.6V5.6L7.3 9.2H4Z"></path><path d="M15.2 8.4a5.2 5.2 0 0 1 0 7.2M17.7 5.9a8.7 8.7 0 0 1 0 12.2" class="reader-icon-stroke"></path></svg>',
+    speakerOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2v5.6h3.3l4.4 3.6V5.6L7.3 9.2H4Z"></path><path d="m16 9 5 6m0-6-5 6" class="reader-icon-stroke"></path></svg>',
+    fullscreen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4H4v4.5h2V6h2.5V4ZM15.5 4v2H18v2.5h2V4h-4.5ZM4 15.5V20h4.5v-2H6v-2.5H4ZM18 15.5V18h-2.5v2H20v-4.5h-2Z"></path></svg>'
+  };
+
   const controls = document.createElement("div");
   controls.className = "reader-media-controls";
 
@@ -1826,7 +1848,6 @@ function createReaderMediaPlayer(type, url) {
   play.type = "button";
   play.className = "reader-media-control reader-media-play";
   play.setAttribute("aria-label", "Воспроизвести");
-  play.textContent = "▶";
 
   const progress = document.createElement("input");
   progress.type = "range";
@@ -1841,12 +1862,14 @@ function createReaderMediaPlayer(type, url) {
   time.className = "reader-media-time";
   time.textContent = "0:00 / 0:00";
 
-  const mute = document.createElement("button");
-  mute.type = "button";
-  mute.className = "reader-media-control reader-media-mute";
-  mute.setAttribute("aria-label", "Выключить звук");
-  mute.textContent = "VOL";
-
+  const volumeWrap = document.createElement("span");
+  volumeWrap.className = "reader-media-volume-wrap";
+  const volumeButton = document.createElement("button");
+  volumeButton.type = "button";
+  volumeButton.className = "reader-media-control reader-media-volume-button";
+  volumeButton.setAttribute("aria-label", "Громкость");
+  const volumePanel = document.createElement("span");
+  volumePanel.className = "reader-media-volume-panel";
   const volume = document.createElement("input");
   volume.type = "range";
   volume.className = "reader-media-volume";
@@ -1855,19 +1878,31 @@ function createReaderMediaPlayer(type, url) {
   volume.step = "0.05";
   volume.value = "1";
   volume.setAttribute("aria-label", "Громкость");
+  volumePanel.appendChild(volume);
+  volumeWrap.append(volumeButton, volumePanel);
 
   const fullscreen = document.createElement("button");
   fullscreen.type = "button";
   fullscreen.className = "reader-media-control reader-media-fullscreen";
   fullscreen.setAttribute("aria-label", "Полный экран");
-  fullscreen.textContent = "FULL";
+  fullscreen.innerHTML = icons.fullscreen;
   if (type !== "video") fullscreen.hidden = true;
+
+  const center = document.createElement("button");
+  center.type = "button";
+  center.className = "reader-media-center";
+  center.setAttribute("aria-label", "Воспроизвести");
+  center.innerHTML = icons.play;
+  if (type !== "video") center.hidden = true;
 
   const syncPlay = () => {
     const playing = !media.paused && !media.ended;
-    play.textContent = playing ? "Ⅱ" : "▶";
+    play.innerHTML = playing ? icons.pause : icons.play;
+    center.innerHTML = playing ? icons.pause : icons.play;
     play.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
+    center.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
     player.classList.toggle("is-playing", playing);
+    player.classList.toggle("is-paused", !playing);
   };
   const syncTime = () => {
     const duration = Number.isFinite(media.duration) ? media.duration : 0;
@@ -1875,47 +1910,73 @@ function createReaderMediaPlayer(type, url) {
     progress.value = duration ? String(Math.round((current / duration) * 1000)) : "0";
     time.textContent = formatMediaTime(current) + " / " + formatMediaTime(duration);
   };
-  const syncMute = () => {
-    mute.textContent = media.muted || media.volume === 0 ? "MUTE" : "VOL";
-    mute.setAttribute("aria-label", media.muted ? "Включить звук" : "Выключить звук");
-    volume.value = media.muted ? "0" : String(media.volume);
+  const syncVolume = () => {
+    const silent = media.muted || media.volume === 0;
+    volumeButton.innerHTML = silent ? icons.speakerOff : icons.speaker;
+    volumeButton.setAttribute("aria-label", silent ? "Звук выключен" : "Громкость");
+    volume.value = silent ? "0" : String(media.volume);
   };
-
-  play.addEventListener("click", () => {
+  const togglePlayback = () => {
     if (media.paused) media.play().catch(() => {});
     else media.pause();
+  };
+  const revealControls = () => {
+    player.classList.remove("is-idle");
+    window.clearTimeout(player._idleTimer);
+    player._idleTimer = window.setTimeout(() => {
+      if (!media.paused) player.classList.add("is-idle");
+    }, 2200);
+  };
+
+  play.addEventListener("click", togglePlayback);
+  center.addEventListener("click", (event) => {
+    event.stopPropagation();
+    togglePlayback();
+    revealControls();
   });
+  media.addEventListener("click", togglePlayback);
   progress.addEventListener("input", () => {
     if (Number.isFinite(media.duration) && media.duration > 0) {
       media.currentTime = (Number(progress.value) / 1000) * media.duration;
     }
+    revealControls();
   });
-  mute.addEventListener("click", () => {
-    media.muted = !media.muted;
-    syncMute();
+  volumeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    volumeWrap.classList.toggle("is-open");
+    revealControls();
   });
   volume.addEventListener("input", () => {
     media.volume = Number(volume.value);
     media.muted = media.volume === 0;
-    syncMute();
+    syncVolume();
+    revealControls();
   });
   fullscreen.addEventListener("click", async () => {
     try {
-      if (player.requestFullscreen) await player.requestFullscreen();
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if (player.requestFullscreen) await player.requestFullscreen();
       else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen();
     } catch {}
+    revealControls();
+  });
+  [player, media, controls].forEach((target) => {
+    target.addEventListener("pointermove", revealControls, { passive: true });
+    target.addEventListener("touchstart", revealControls, { passive: true });
   });
   media.addEventListener("play", syncPlay);
-  media.addEventListener("pause", syncPlay);
-  media.addEventListener("ended", syncPlay);
+  media.addEventListener("pause", () => { syncPlay(); revealControls(); });
+  media.addEventListener("ended", () => { syncPlay(); revealControls(); });
   media.addEventListener("timeupdate", syncTime);
   media.addEventListener("loadedmetadata", syncTime);
-  media.addEventListener("volumechange", syncMute);
-  syncMute();
+  media.addEventListener("volumechange", syncVolume);
+  syncPlay();
+  syncVolume();
   syncTime();
 
-  controls.append(play, progress, time, mute, volume, fullscreen);
-  player.append(media, controls);
+  controls.append(play, progress, time, volumeWrap, fullscreen);
+  player.append(media, center, controls);
+  revealControls();
   return player;
 }
 
@@ -2145,9 +2206,7 @@ function openLessonEditor(id) {
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
   editorPath.textContent = path.map((item) => item.title).join("  /  ");
-  const roleText = "АДМИН";
-  editorRoleLabel.textContent = "[ RKO / АДМИН ]";
-  editorAccountRole.textContent = roleText;
+  editorRoleLabel.textContent = "АДМИН";
   lessonNameInput.value = editorDraft.title;
   allowDownloads.checked = editorDraft.allowDownloads;
   updateEditorVisibility();
@@ -2767,7 +2826,7 @@ nextLesson.addEventListener("click", () => {
 });
 
 editorBack.addEventListener("click", closeLessonEditor);
-editorAdminButton?.addEventListener("click", leaveEditorToCourse);
+editorRoleLabel?.addEventListener("click", leaveEditorToCourse);
 editorLogoutButton.addEventListener("click", () => logoutFrom(editorLogoutButton));
 lessonNameInput.addEventListener("input", () => {
   if (!editorDraft) return;
