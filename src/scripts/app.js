@@ -39,6 +39,8 @@ const coniferBackButton = $("#coniferBackButton");
 const readerBack = $("#readerBack");
 const readerTitle = $("#readerTitle");
 const readerContent = $("#readerContent");
+const readerProgram = $("#readerProgram");
+const readerProgramList = $("#readerProgramList");
 const structureRows = $("#structureRows");
 const addButton = $("#addButton");
 const saveStructure = $("#saveStructure");
@@ -58,6 +60,7 @@ const exitConfirmDiscard = $("#exitConfirmDiscard");
 const exitConfirmSave = $("#exitConfirmSave");
 const editorPage = $("#editorPage");
 const editorLogoutButton = $("#editorLogoutButton");
+const editorAdminButton = $("#editorAdminButton");
 const editorRoleLabel = $("#editorRoleLabel");
 const editorAccountRole = $("#editorAccountRole");
 const editorBack = $("#editorBack");
@@ -130,6 +133,7 @@ const SETTINGS_KEY = "rko-platform-settings-v1";
 const PROGRESS_KEY = "rko-lesson-progress-v1";
 const ACCOUNT_STORAGE_KEY = "rko-platform-accounts-v1";
 const SESSION_KEY = "rko-platform-session-v1";
+const READER_PROGRAM_COLLAPSED_KEY = "rko-reader-program-collapsed-v1";
 const DEFAULT_SETTINGS = { newItemsVisible: false, newItemsAllowDownloads: true, primaryColor: "#FFAE42", secondaryColor: "#2F7D57" };
 const HIGHLIGHT_COLORS = [
   { name: "МЯГКИЙ ЗЕЛЁНЫЙ", value: "#DDEBDD" },
@@ -140,10 +144,22 @@ const HIGHLIGHT_COLORS = [
 ];
 const CALLOUT_META = {
   important: { label: "ВАЖНО", icon: "!" },
-  tip: { label: "ПОДСКАЗКА", icon: "i" },
+  tip: { label: "ПОДСКАЗКА", icon: "?" },
   result: { label: "РЕЗУЛЬТАТ", icon: "✓" },
 };
+const CALLOUT_ICONS = ["!", "?", "✓"];
+const CALLOUT_ICON_VARIANTS = { "!": "important", "?": "tip", "✓": "result" };
 const normalizeCalloutVariant = (variant) => CALLOUT_META[variant] ? variant : "important";
+const normalizeCalloutIcon = (icon, variant = "important") => CALLOUT_ICONS.includes(icon) ? icon : CALLOUT_META[variant]?.icon || "!";
+function normalizeCalloutBlock(block) {
+  block.variant = normalizeCalloutVariant(block.variant);
+  const meta = CALLOUT_META[block.variant];
+  if (!Object.prototype.hasOwnProperty.call(block, "label")) block.label = meta.label;
+  block.label = String(block.label ?? "");
+  block.icon = normalizeCalloutIcon(block.icon, block.variant);
+  block.html ??= "";
+  return block;
+}
 const API_BASE = "/api";
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
@@ -186,6 +202,9 @@ let editorDraft = null;
 let editorOriginal = null;
 let platformSettings = loadSettings();
 let lessonProgressState = {};
+let readerProgramCollapsed = new Set();
+let readerMediaUrls = [];
+let readerRenderToken = 0;
 let accountStore = loadAccounts();
 let accountModalMode = "profile";
 let editingAccountLogin = null;
@@ -390,10 +409,7 @@ function normalizeStructure(items) {
           block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
           block.text ??= "";
         }
-        if (block.type === "callout") {
-          block.variant = normalizeCalloutVariant(block.variant);
-          block.html ??= "";
-        }
+        if (block.type === "callout") normalizeCalloutBlock(block);
       });
     }
     if (item.children) normalizeStructure(item.children);
@@ -618,6 +634,7 @@ function showWelcome(account) {
 function showDashboard(account) {
   currentAccount = account;
   collapsedIds = loadCollapsedIds(account);
+  readerProgramCollapsed = loadReaderProgramCollapsed(account);
   localStorage.setItem(SESSION_KEY, account.login);
   lessonProgressState = loadLessonProgress(account);
   dashboardIsSwitching = false;
@@ -652,6 +669,7 @@ function logoutFrom(button) {
       localStorage.removeItem(SESSION_KEY);
       fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
       lessonProgressState = {};
+      readerProgramCollapsed = new Set();
       showAuth({ skipIntro: true });
     }, 520);
   }, 210);
@@ -1598,6 +1616,8 @@ function renderCourse() {
   courseBrowser.classList.remove("is-hidden");
   lessonReader.classList.remove("is-visible");
   lessonReader.setAttribute("aria-hidden", "true");
+  readerRenderToken += 1;
+  clearReaderMediaUrls();
   learningTitle.classList.remove("is-reader-hidden");
   const currentPlace = coursePath.length ? findNode(savedStructure, coursePath.at(-1))?.item.title : "ОБУЧЕНИЕ";
   transitionLearningTitle(currentPlace);
@@ -1660,6 +1680,87 @@ function hierarchyFor(id, items = savedStructure, trail = []) {
   return null;
 }
 
+
+function readerProgramStorageKey(account = currentAccount) {
+  return READER_PROGRAM_COLLAPSED_KEY + ":" + (account?.login || "guest");
+}
+
+function loadReaderProgramCollapsed(account = currentAccount) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(readerProgramStorageKey(account)) || "[]");
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveReaderProgramCollapsed() {
+  try {
+    localStorage.setItem(readerProgramStorageKey(), JSON.stringify([...readerProgramCollapsed]));
+  } catch {}
+}
+
+function countReaderLessons(item) {
+  if (!item) return 0;
+  if (item.type === "lesson") return 1;
+  return (item.children || []).reduce((total, child) => total + countReaderLessons(child), 0);
+}
+
+function renderReaderProgram(currentLessonId) {
+  if (!readerProgramList) return;
+  readerProgramList.innerHTML = "";
+  const activePath = new Set((hierarchyFor(currentLessonId) || []).map((item) => item.id));
+
+  const appendLesson = (lesson, host) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "reader-program-lesson";
+    button.dataset.programLesson = lesson.id;
+    button.classList.toggle("is-current", lesson.id === currentLessonId);
+    const state = lessonProgressState[lesson.id] || "new";
+    button.classList.add("is-" + state);
+    button.innerHTML = '<span class="reader-program-lesson-state" aria-hidden="true"></span><span class="reader-program-lesson-title"></span>';
+    button.querySelector(".reader-program-lesson-title").textContent = lesson.title || "БЕЗ НАЗВАНИЯ";
+    button.setAttribute("aria-current", lesson.id === currentLessonId ? "page" : "false");
+    host.appendChild(button);
+  };
+
+  const appendGroup = (item, host, depth = 0) => {
+    const children = (item.children || []).filter((child) => child.visible !== false && isEffectivelyVisible(child.id));
+    if (!children.length) return;
+    const group = document.createElement("section");
+    group.className = "reader-program-group reader-program-group--" + item.type;
+    group.dataset.programGroup = item.id;
+    group.dataset.depth = String(depth);
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "reader-program-toggle";
+    toggle.dataset.programToggle = item.id;
+    const expanded = activePath.has(item.id) || !readerProgramCollapsed.has(item.id);
+    toggle.setAttribute("aria-expanded", String(expanded));
+    toggle.innerHTML = '<span class="reader-program-chevron" aria-hidden="true"></span><span class="reader-program-group-title"></span><span class="reader-program-group-count"></span>';
+    toggle.querySelector(".reader-program-group-title").textContent = item.title || "БЕЗ НАЗВАНИЯ";
+    const lessonCount = countReaderLessons(item);
+    toggle.querySelector(".reader-program-group-count").textContent = lessonCount + " " + (lessonCount === 1 ? "УРОК" : "УРОКОВ");
+
+    const childList = document.createElement("div");
+    childList.className = "reader-program-children";
+    childList.classList.toggle("is-collapsed", !expanded);
+    children.forEach((child) => {
+      if (child.type === "lesson") appendLesson(child, childList);
+      else appendGroup(child, childList, depth + 1);
+    });
+    group.append(toggle, childList);
+    host.appendChild(group);
+  };
+
+  savedStructure.filter((item) => item.visible !== false && isEffectivelyVisible(item.id)).forEach((item) => {
+    if (item.type === "lesson") appendLesson(item, readerProgramList);
+    else appendGroup(item, readerProgramList, 0);
+  });
+}
+
 function openLessonReader(lesson) {
   const hierarchy = hierarchyFor(lesson.id) ?? [lesson];
   markLessonVisited(lesson.id);
@@ -1673,10 +1774,143 @@ function openLessonReader(lesson) {
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
   renderLessonNavigation(lesson);
+  renderReaderProgram(lesson.id);
   renderReaderBlocks(lesson.blocks ?? [], lesson.allowDownloads);
 }
 
+
+function formatMediaTime(value) {
+  const seconds = Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = String(seconds % 60).padStart(2, "0");
+  return minutes + ":" + remainder;
+}
+
+function clearReaderMediaUrls() {
+  readerMediaUrls.forEach((url) => {
+    try { URL.revokeObjectURL(url); } catch {}
+  });
+  readerMediaUrls = [];
+}
+
+function createReaderMediaPlayer(type, url) {
+  const player = document.createElement("div");
+  player.className = "reader-media-player";
+  player.dataset.mediaType = type;
+
+  const media = document.createElement(type);
+  media.className = "reader-media-element";
+  media.src = url;
+  media.preload = "metadata";
+  media.controls = false;
+  if (type === "video") {
+    media.playsInline = true;
+    media.setAttribute("playsinline", "");
+  }
+
+  const controls = document.createElement("div");
+  controls.className = "reader-media-controls";
+
+  const play = document.createElement("button");
+  play.type = "button";
+  play.className = "reader-media-control reader-media-play";
+  play.setAttribute("aria-label", "Воспроизвести");
+  play.textContent = "▶";
+
+  const progress = document.createElement("input");
+  progress.type = "range";
+  progress.className = "reader-media-progress";
+  progress.min = "0";
+  progress.max = "1000";
+  progress.value = "0";
+  progress.step = "1";
+  progress.setAttribute("aria-label", "Позиция воспроизведения");
+
+  const time = document.createElement("span");
+  time.className = "reader-media-time";
+  time.textContent = "0:00 / 0:00";
+
+  const mute = document.createElement("button");
+  mute.type = "button";
+  mute.className = "reader-media-control reader-media-mute";
+  mute.setAttribute("aria-label", "Выключить звук");
+  mute.textContent = "VOL";
+
+  const volume = document.createElement("input");
+  volume.type = "range";
+  volume.className = "reader-media-volume";
+  volume.min = "0";
+  volume.max = "1";
+  volume.step = "0.05";
+  volume.value = "1";
+  volume.setAttribute("aria-label", "Громкость");
+
+  const fullscreen = document.createElement("button");
+  fullscreen.type = "button";
+  fullscreen.className = "reader-media-control reader-media-fullscreen";
+  fullscreen.setAttribute("aria-label", "Полный экран");
+  fullscreen.textContent = "FULL";
+  if (type !== "video") fullscreen.hidden = true;
+
+  const syncPlay = () => {
+    const playing = !media.paused && !media.ended;
+    play.textContent = playing ? "Ⅱ" : "▶";
+    play.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
+    player.classList.toggle("is-playing", playing);
+  };
+  const syncTime = () => {
+    const duration = Number.isFinite(media.duration) ? media.duration : 0;
+    const current = Number.isFinite(media.currentTime) ? media.currentTime : 0;
+    progress.value = duration ? String(Math.round((current / duration) * 1000)) : "0";
+    time.textContent = formatMediaTime(current) + " / " + formatMediaTime(duration);
+  };
+  const syncMute = () => {
+    mute.textContent = media.muted || media.volume === 0 ? "MUTE" : "VOL";
+    mute.setAttribute("aria-label", media.muted ? "Включить звук" : "Выключить звук");
+    volume.value = media.muted ? "0" : String(media.volume);
+  };
+
+  play.addEventListener("click", () => {
+    if (media.paused) media.play().catch(() => {});
+    else media.pause();
+  });
+  progress.addEventListener("input", () => {
+    if (Number.isFinite(media.duration) && media.duration > 0) {
+      media.currentTime = (Number(progress.value) / 1000) * media.duration;
+    }
+  });
+  mute.addEventListener("click", () => {
+    media.muted = !media.muted;
+    syncMute();
+  });
+  volume.addEventListener("input", () => {
+    media.volume = Number(volume.value);
+    media.muted = media.volume === 0;
+    syncMute();
+  });
+  fullscreen.addEventListener("click", async () => {
+    try {
+      if (player.requestFullscreen) await player.requestFullscreen();
+      else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen();
+    } catch {}
+  });
+  media.addEventListener("play", syncPlay);
+  media.addEventListener("pause", syncPlay);
+  media.addEventListener("ended", syncPlay);
+  media.addEventListener("timeupdate", syncTime);
+  media.addEventListener("loadedmetadata", syncTime);
+  media.addEventListener("volumechange", syncMute);
+  syncMute();
+  syncTime();
+
+  controls.append(play, progress, time, mute, volume, fullscreen);
+  player.append(media, controls);
+  return player;
+}
+
 async function renderReaderBlocks(blocks, downloadsAllowed = false) {
+  const renderToken = ++readerRenderToken;
+  clearReaderMediaUrls();
   readerContent.innerHTML = "";
   if (!blocks.length) {
     const empty = document.createElement("p");
@@ -1687,7 +1921,7 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
   }
   for (const block of blocks) {
     const element = document.createElement("section");
-    element.className = `reader-block reader-block--${block.type}`;
+    element.className = "reader-block reader-block--" + block.type;
     if (block.type === "heading") {
       const heading = document.createElement(block.level || "h2");
       const headingAlign = ["left", "center", "right"].includes(block.align) ? block.align : "left";
@@ -1697,18 +1931,19 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
     } else if (block.type === "text") {
       element.innerHTML = block.html || "";
     } else if (block.type === "callout") {
+      normalizeCalloutBlock(block);
       const variant = normalizeCalloutVariant(block.variant);
       const meta = CALLOUT_META[variant];
-      element.classList.add(`callout--${variant}`);
+      element.classList.add("callout--" + variant);
       element.setAttribute("role", "note");
       const marker = document.createElement("span");
       marker.className = "callout-marker";
-      marker.textContent = meta.icon;
+      marker.textContent = block.icon || meta.icon;
       const copy = document.createElement("div");
       copy.className = "callout-copy";
       const label = document.createElement("strong");
       label.className = "callout-label";
-      label.textContent = meta.label;
+      label.textContent = block.label || meta.label;
       const body = document.createElement("div");
       body.className = "callout-body";
       body.innerHTML = block.html || "";
@@ -1719,26 +1954,35 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
       element.setAttribute("aria-label", "Разделитель");
     } else {
       const asset = await getAsset(block.id);
+      if (renderToken !== readerRenderToken) return;
       if (!asset?.blob) {
-        element.innerHTML = `<p class="missing-asset">Локальный файл недоступен: <strong></strong></p>`;
+        element.innerHTML = '<p class="missing-asset">Локальный файл недоступен: <strong></strong></p>';
         element.querySelector("strong").textContent = block.fileName || "файл";
       } else {
         const url = URL.createObjectURL(asset.blob);
+        readerMediaUrls.push(url);
         if (block.type === "image") {
-          const image = document.createElement("img"); image.src = url; image.alt = block.fileName || "Изображение урока"; element.appendChild(image);
-        } else if (block.type === "video") {
-          const video = document.createElement("video"); video.src = url; video.controls = true; element.appendChild(video);
-        } else if (block.type === "audio") {
-          const audio = document.createElement("audio"); audio.src = url; audio.controls = true; element.appendChild(audio);
+          const image = document.createElement("img");
+          image.src = url;
+          image.alt = block.fileName || "Изображение урока";
+          element.appendChild(image);
+        } else if (block.type === "video" || block.type === "audio") {
+          element.appendChild(createReaderMediaPlayer(block.type, url));
+        } else if (downloadsAllowed) {
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = block.fileName || "file";
+          link.textContent = "СКАЧАТЬ — " + (block.fileName || "ФАЙЛ");
+          element.appendChild(link);
         } else {
-          if (downloadsAllowed) {
-            const link = document.createElement("a"); link.href = url; link.download = block.fileName || "file"; link.textContent = `СКАЧАТЬ — ${block.fileName || "ФАЙЛ"}`; element.appendChild(link);
-          } else {
-            const label = document.createElement("p"); label.className = "attachment-label"; label.textContent = block.fileName || "ФАЙЛ"; element.appendChild(label);
-          }
+          const label = document.createElement("p");
+          label.className = "attachment-label";
+          label.textContent = block.fileName || "ФАЙЛ";
+          element.appendChild(label);
         }
       }
     }
+    if (renderToken !== readerRenderToken) return;
     readerContent.appendChild(element);
   }
 }
@@ -1899,6 +2143,24 @@ function openLessonEditor(id) {
   renderEditorBlocks();
   updateEditorState();
   setPage(editorPage);
+}
+
+function hasUnsavedEditorChanges() {
+  return Boolean(editorDraft && editorOriginal && JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal));
+}
+
+function leaveEditorToCourse() {
+  if (hasUnsavedEditorChanges()) {
+    showNotice("СНАЧАЛА СОХРАНИ УРОК", "error");
+    return;
+  }
+  editorLessonId = null;
+  editorDraft = null;
+  editorOriginal = null;
+  coursePath = [];
+  setPage(dashboardPage);
+  renderCourse();
+  if (dashboardMode === "admin") setDashboardMode("learning");
 }
 
 function closeLessonEditor() {
@@ -2079,28 +2341,63 @@ function renderTextBlock(container, block) {
 }
 
 function renderCalloutBlock(container, block) {
-  block.variant = normalizeCalloutVariant(block.variant);
+  normalizeCalloutBlock(block);
   const settings = document.createElement("div");
   settings.className = "callout-editor-settings";
-  const label = document.createElement("span");
-  label.textContent = "ВИД БЛОКА";
-  const select = document.createElement("select");
-  Object.entries(CALLOUT_META).forEach(([value, meta]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = `${meta.icon}  ${meta.label}`;
-    option.selected = value === block.variant;
-    select.appendChild(option);
+
+  const iconLabel = document.createElement("span");
+  iconLabel.className = "callout-setting-label";
+  iconLabel.textContent = "ЗНАЧОК";
+
+  const iconPicker = document.createElement("div");
+  iconPicker.className = "callout-icon-picker";
+  iconPicker.setAttribute("aria-label", "Значок блока");
+  const syncIcon = () => {
+    iconPicker.querySelectorAll("[data-callout-icon]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.calloutIcon === block.icon);
+      button.setAttribute("aria-pressed", String(button.dataset.calloutIcon === block.icon));
+    });
+  };
+  CALLOUT_ICONS.forEach((icon) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "callout-icon-button";
+    button.dataset.calloutIcon = icon;
+    button.textContent = icon;
+    button.title = icon === "!" ? "Восклицательный знак" : icon === "?" ? "Вопросительный знак" : "Галочка";
+    button.setAttribute("aria-label", button.title);
+    button.addEventListener("click", () => {
+      block.icon = icon;
+      block.variant = CALLOUT_ICON_VARIANTS[icon] || block.variant;
+      syncIcon();
+      updateEditorState();
+    });
+    iconPicker.appendChild(button);
   });
-  select.addEventListener("change", () => { block.variant = normalizeCalloutVariant(select.value); updateEditorState(); });
-  settings.append(label, select);
+  syncIcon();
+
+  const label = document.createElement("input");
+  label.className = "callout-label-input";
+  label.type = "text";
+  label.value = block.label;
+  label.placeholder = "Название блока";
+  label.setAttribute("aria-label", "Название блока");
+  label.addEventListener("input", () => {
+    block.label = label.value;
+    updateEditorState();
+  });
+
+  settings.append(iconLabel, iconPicker, label);
+
   const toolbar = document.createElement("div");
   const area = document.createElement("div");
-  area.className = "rich-text callout-rich-text"; area.contentEditable = "true"; area.dataset.placeholder = "Введите текст блока"; area.innerHTML = block.html || "";
+  area.className = "rich-text callout-rich-text";
+  area.contentEditable = "true";
+  area.dataset.placeholder = "Введите текст блока";
+  area.innerHTML = block.html || "";
   buildRichTextToolbar(toolbar, area, block);
   container.append(settings, toolbar, area);
 }
-
 function renderDividerBlock(container) {
   const preview = document.createElement("div");
   preview.className = "divider-editor-preview";
@@ -2156,7 +2453,7 @@ function addLessonBlock(type) {
   const block = { id: uid("block"), type };
   if (type === "heading") Object.assign(block, { level: "h1", align: "left", text: "" });
   if (type === "text" || type === "callout") block.html = "";
-  if (type === "callout") block.variant = "important";
+  if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!" });
   editorDraft.blocks.push(block);
   closeBlockPicker();
   renderEditorBlocks();
@@ -2374,7 +2671,34 @@ courseGuideBack.addEventListener("click", () => {
   coursePath.pop();
   renderCourse();
 });
+
 readerBack.addEventListener("click", renderCourse);
+
+readerProgramList?.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-program-toggle]");
+  if (toggle) {
+    const id = toggle.dataset.programToggle;
+    const children = toggle.parentElement?.querySelector(":scope > .reader-program-children");
+    const expanded = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!expanded));
+    children?.classList.toggle("is-collapsed", expanded);
+    if (expanded) readerProgramCollapsed.add(id);
+    else readerProgramCollapsed.delete(id);
+    saveReaderProgramCollapsed();
+    return;
+  }
+  const lessonButton = event.target.closest("[data-program-lesson]");
+  if (!lessonButton) return;
+  const found = findNode(savedStructure, lessonButton.dataset.programLesson);
+  if (found?.item?.type === "lesson") openLessonReader(found.item);
+});
+
+["copy", "cut", "contextmenu", "selectstart", "dragstart"].forEach((eventName) => {
+  lessonReader?.addEventListener(eventName, (event) => {
+    if (event.target.closest(".reader-program, button, a, input, video, audio")) return;
+    if (event.target.closest(".reader-title, .reader-content")) event.preventDefault();
+  });
+});
 
 coniferTreeButton?.addEventListener("click", (event) => {
   event.stopPropagation();
@@ -2422,6 +2746,7 @@ nextLesson.addEventListener("click", () => {
 });
 
 editorBack.addEventListener("click", closeLessonEditor);
+editorAdminButton?.addEventListener("click", leaveEditorToCourse);
 editorLogoutButton.addEventListener("click", () => logoutFrom(editorLogoutButton));
 lessonNameInput.addEventListener("input", () => {
   if (!editorDraft) return;
