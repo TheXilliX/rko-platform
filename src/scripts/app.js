@@ -123,6 +123,19 @@ const PROGRESS_KEY = "rko-lesson-progress-v1";
 const ACCOUNT_STORAGE_KEY = "rko-platform-accounts-v1";
 const SESSION_KEY = "rko-platform-session-v1";
 const DEFAULT_SETTINGS = { newItemsVisible: false, newItemsAllowDownloads: true, primaryColor: "#FFAE42", secondaryColor: "#2F7D57" };
+const HIGHLIGHT_COLORS = [
+  { name: "МЯГКИЙ ЗЕЛЁНЫЙ", value: "#DDEBDD" },
+  { name: "ЯНТАРНЫЙ", value: "#F6E0B8" },
+  { name: "СИНЕ-СЕРЫЙ", value: "#DCE5ED" },
+  { name: "СВЕТЛО-СЕРЫЙ", value: "#E7E8E5" },
+  { name: "МЯГКИЙ КРАСНЫЙ", value: "#F1D7D2" },
+];
+const CALLOUT_META = {
+  important: { label: "ВАЖНО", icon: "!" },
+  tip: { label: "ПОДСКАЗКА", icon: "i" },
+  result: { label: "РЕЗУЛЬТАТ", icon: "✓" },
+};
+const normalizeCalloutVariant = (variant) => CALLOUT_META[variant] ? variant : "important";
 const API_BASE = "/api";
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
@@ -339,8 +352,14 @@ function loadSavedStructure() {
 function normalizeStructure(items) {
   items.forEach((item) => {
     if (item.type === "lesson") {
-      item.blocks ??= [];
+      if (!Array.isArray(item.blocks)) item.blocks = [];
       item.allowDownloads ??= false;
+      item.blocks.forEach((block) => {
+        if (block.type === "callout") {
+          block.variant = normalizeCalloutVariant(block.variant);
+          block.html ??= "";
+        }
+      });
     }
     if (item.children) normalizeStructure(item.children);
   });
@@ -1551,6 +1570,27 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
       element.appendChild(heading);
     } else if (block.type === "text") {
       element.innerHTML = block.html || "";
+    } else if (block.type === "callout") {
+      const variant = normalizeCalloutVariant(block.variant);
+      const meta = CALLOUT_META[variant];
+      element.classList.add(`callout--${variant}`);
+      element.setAttribute("role", "note");
+      const marker = document.createElement("span");
+      marker.className = "callout-marker";
+      marker.textContent = meta.icon;
+      const copy = document.createElement("div");
+      copy.className = "callout-copy";
+      const label = document.createElement("strong");
+      label.className = "callout-label";
+      label.textContent = meta.label;
+      const body = document.createElement("div");
+      body.className = "callout-body";
+      body.innerHTML = block.html || "";
+      copy.append(label, body);
+      element.append(marker, copy);
+    } else if (block.type === "divider") {
+      element.setAttribute("role", "separator");
+      element.setAttribute("aria-label", "Разделитель");
     } else {
       const asset = await getAsset(block.id);
       if (!asset?.blob) {
@@ -1772,11 +1812,13 @@ function renderEditorBlocks() {
     const row = document.createElement("div");
     row.className = `lesson-block lesson-block--${block.type}${blockDragId === block.id ? " is-dragging" : ""}${blockDragTargetId === block.id && blockDragId !== block.id ? " is-drag-target" : ""}${blockDragTargetId === block.id && blockDragAfter ? " is-drop-after" : ""}`;
     row.dataset.blockId = block.id;
-    const label = { heading: "ЗАГОЛОВОК", text: "ТЕКСТ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type];
+    const label = { heading: "ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
     row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-more" type="button" aria-label="Действия блока">•••</button><div class="block-menu"><button type="button" data-block-action="delete">УДАЛИТЬ</button></div>`;
     const editor = row.querySelector(".block-editor");
     if (block.type === "heading") renderHeadingBlock(editor, block);
     else if (block.type === "text") renderTextBlock(editor, block);
+    else if (block.type === "callout") renderCalloutBlock(editor, block);
+    else if (block.type === "divider") renderDividerBlock(editor);
     else renderFileBlock(editor, block);
     lessonBlocks.appendChild(row);
   });
@@ -1795,12 +1837,22 @@ function renderHeadingBlock(container, block) {
   container.append(select, input);
 }
 
-function renderTextBlock(container, block) {
-  const toolbar = document.createElement("div");
+function buildRichTextToolbar(toolbar, area, block) {
   toolbar.className = "text-toolbar";
-  toolbar.innerHTML = '<button type="button" data-command="bold"><b>B</b></button><button type="button" data-command="italic"><i>I</i></button><button type="button" data-command="createLink">ССЫЛКА</button><button type="button" data-command="insertUnorderedList">СПИСОК</button>';
-  const area = document.createElement("div");
-  area.className = "rich-text"; area.contentEditable = "true"; area.dataset.placeholder = "Введите текст урока"; area.innerHTML = block.html || "";
+  const highlightButtons = HIGHLIGHT_COLORS.map(({ name, value }) => `<button class="highlight-swatch" type="button" data-highlight="${value}" title="Выделить: ${name}" aria-label="Выделить: ${name}"><i style="background:${value}"></i></button>`).join("");
+  toolbar.innerHTML = `<button type="button" data-command="bold" title="Жирный"><b>B</b></button><button type="button" data-command="italic" title="Курсив"><i>I</i></button><button type="button" data-command="createLink">ССЫЛКА</button><button type="button" data-command="insertUnorderedList">СПИСОК</button><span class="text-toolbar-caption">МАРКЕР</span><span class="highlight-palette">${highlightButtons}</span>`;
+  let savedRange = null;
+  const rememberSelection = () => {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount || !area.contains(selection.anchorNode) || !area.contains(selection.focusNode)) return;
+    savedRange = selection.getRangeAt(0).cloneRange();
+  };
+  const restoreSelection = () => {
+    if (!savedRange) return;
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(savedRange);
+  };
   const syncToolbar = () => {
     toolbar.querySelectorAll("[data-command]").forEach((button) => {
       const command = button.dataset.command;
@@ -1814,24 +1866,71 @@ function renderTextBlock(container, block) {
     });
   };
   toolbar.addEventListener("mousedown", (event) => {
-    const button = event.target.closest("[data-command]");
+    const button = event.target.closest("[data-command], [data-highlight]");
     if (!button) return;
     event.preventDefault();
-    area.focus();
+    rememberSelection();
+    area.focus({ preventScroll: true });
+    restoreSelection();
+    const highlight = button.dataset.highlight;
     const command = button.dataset.command;
-    const value = command === "createLink" ? window.prompt("Вставьте ссылку") : null;
-    if (command !== "createLink" || value) document.execCommand(command, false, value);
+    if (highlight) {
+      document.execCommand("styleWithCSS", false, true);
+      document.execCommand("hiliteColor", false, highlight);
+    } else {
+      const value = command === "createLink" ? window.prompt("Вставьте ссылку") : null;
+      if (command !== "createLink" || value) document.execCommand(command, false, value);
+    }
     block.html = area.innerHTML;
     syncToolbar();
     updateEditorState();
   });
-  ["input", "keyup", "mouseup", "focus"].forEach((eventName) => area.addEventListener(eventName, () => {
+  ["input", "keyup", "mouseup", "focus", "blur"].forEach((eventName) => area.addEventListener(eventName, () => {
+    rememberSelection();
     block.html = area.innerHTML;
     syncToolbar();
     updateEditorState();
   }));
   syncToolbar();
+}
+
+function renderTextBlock(container, block) {
+  const toolbar = document.createElement("div");
+  const area = document.createElement("div");
+  area.className = "rich-text"; area.contentEditable = "true"; area.dataset.placeholder = "Введите текст урока"; area.innerHTML = block.html || "";
+  buildRichTextToolbar(toolbar, area, block);
   container.append(toolbar, area);
+}
+
+function renderCalloutBlock(container, block) {
+  block.variant = normalizeCalloutVariant(block.variant);
+  const settings = document.createElement("div");
+  settings.className = "callout-editor-settings";
+  const label = document.createElement("span");
+  label.textContent = "ВИД БЛОКА";
+  const select = document.createElement("select");
+  Object.entries(CALLOUT_META).forEach(([value, meta]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = `${meta.icon}  ${meta.label}`;
+    option.selected = value === block.variant;
+    select.appendChild(option);
+  });
+  select.addEventListener("change", () => { block.variant = normalizeCalloutVariant(select.value); updateEditorState(); });
+  settings.append(label, select);
+  const toolbar = document.createElement("div");
+  const area = document.createElement("div");
+  area.className = "rich-text callout-rich-text"; area.contentEditable = "true"; area.dataset.placeholder = "Введите текст блока"; area.innerHTML = block.html || "";
+  buildRichTextToolbar(toolbar, area, block);
+  container.append(settings, toolbar, area);
+}
+
+function renderDividerBlock(container) {
+  const preview = document.createElement("div");
+  preview.className = "divider-editor-preview";
+  preview.setAttribute("role", "separator");
+  preview.textContent = "РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ";
+  container.appendChild(preview);
 }
 
 async function renderFileBlock(container, block) {
@@ -1880,7 +1979,8 @@ function closeBlockPicker() {
 function addLessonBlock(type) {
   const block = { id: uid("block"), type };
   if (type === "heading") Object.assign(block, { level: "h1", text: "" });
-  if (type === "text") block.html = "";
+  if (type === "text" || type === "callout") block.html = "";
+  if (type === "callout") block.variant = "important";
   editorDraft.blocks.push(block);
   closeBlockPicker();
   renderEditorBlocks();
