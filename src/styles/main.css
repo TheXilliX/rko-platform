@@ -3547,7 +3547,9 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   transform: translate(50%, 5px);
   transition: opacity .22s ease, transform .22s ease;
 }
-.reader-media-volume-wrap.is-open .reader-media-volume-panel {
+.reader-media-volume-wrap.is-open .reader-media-volume-panel,
+.reader-media-volume-wrap:hover .reader-media-volume-panel,
+.reader-media-volume-wrap:focus-within .reader-media-volume-panel {
   opacity: 1;
   pointer-events: auto;
   transform: translate(50%, 0);
