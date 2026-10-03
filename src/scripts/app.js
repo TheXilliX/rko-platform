@@ -2156,10 +2156,6 @@ function openLessonEditor(id) {
   setPage(editorPage);
 }
 
-function hasUnsavedEditorChanges() {
-  return Boolean(editorDraft && editorOriginal && JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal));
-}
-
 function leaveEditorToCourse({ force = false } = {}) {
   if (!force && hasUnsavedEditorChanges()) {
     openEditorExitConfirm();
