@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Urbanist:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="./favicon-v2h.svg">
-  <link rel="stylesheet" href="./src/styles/main.css?v=20261003-lesson-reader-2">
-  <link rel="stylesheet" href="./src/styles/conifer-cult.css?v=20261003-lesson-reader-2">
+  <link rel="stylesheet" href="./src/styles/main.css?v=20261003-lesson-reader-3">
+  <link rel="stylesheet" href="./src/styles/conifer-cult.css?v=20261003-lesson-reader-3">
 </head>
 <body>
   <div class="app" id="app">
@@ -89,13 +89,13 @@
           </div>
 
           <article class="lesson-reader" id="lessonReader" aria-hidden="true">
-            <button class="reader-back" id="readerBack" type="button">← НАЗАД К МОДУЛЮ</button>
+            <button class="reader-back" id="readerBack" type="button">← НАЗАД</button>
             <h2 class="reader-title" id="readerTitle"></h2>
             <div class="reader-content" id="readerContent"></div>
             <aside class="reader-program" id="readerProgram" aria-label="Содержание курса">
               <div class="reader-program-heading">
                 <p class="reader-program-kicker">НАВИГАЦИЯ</p>
-                <h3>СОДЕРЖАНИЕ КУРСА</h3>
+                <h3 id="readerProgramSection"></h3>
               </div>
               <div class="reader-program-list" id="readerProgramList"></div>
             </aside>
@@ -292,12 +292,10 @@
 
     <section class="page editor-page" id="editorPage" aria-label="Редактор урока">
       <header class="topbar editor-topbar">
-        <p class="service-label" id="editorRoleLabel">[ RKO / АДМИН ]</p>
+        <p class="service-label">[ RKO / АДМИН ]</p>
         <div class="account-nav" aria-label="Аккаунт">
           <span>ВЛАД</span><span class="nav-dot" aria-hidden="true"></span>
-          <span class="editor-admin-mark" id="editorAccountRole">АДМИН</span><span class="nav-dot" aria-hidden="true"></span>
-          <button class="editor-admin-button nav-action" id="editorAdminButton" type="button">ADMIN</button>
-          <span class="nav-dot" aria-hidden="true"></span>
+          <button class="editor-admin-button nav-action" id="editorRoleLabel" type="button">АДМИН</button><span class="nav-dot" aria-hidden="true"></span>
           <button class="logout-button nav-action" id="editorLogoutButton" type="button">ВЫЙТИ</button>
         </div>
       </header>
@@ -443,6 +441,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/scripts/app.js?v=20261003-lesson-reader-2"></script>
+  <script type="module" src="./src/scripts/app.js?v=20261003-lesson-reader-3"></script>
 </body>
 </html>
