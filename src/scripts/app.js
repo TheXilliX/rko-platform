@@ -385,6 +385,11 @@ function normalizeStructure(items) {
       if (!Array.isArray(item.blocks)) item.blocks = [];
       item.allowDownloads ??= false;
       item.blocks.forEach((block) => {
+        if (block.type === "heading") {
+          block.level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(block.level) ? block.level : "h2";
+          block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
+          block.text ??= "";
+        }
         if (block.type === "callout") {
           block.variant = normalizeCalloutVariant(block.variant);
           block.html ??= "";
@@ -1685,6 +1690,8 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
     element.className = `reader-block reader-block--${block.type}`;
     if (block.type === "heading") {
       const heading = document.createElement(block.level || "h2");
+      const headingAlign = ["left", "center", "right"].includes(block.align) ? block.align : "left";
+      element.classList.add("reader-heading--" + headingAlign);
       heading.textContent = block.text || "";
       element.appendChild(heading);
     } else if (block.type === "text") {
@@ -1947,15 +1954,63 @@ function renderEditorBlocks() {
 }
 
 function renderHeadingBlock(container, block) {
+  block.level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(block.level) ? block.level : "h2";
+  block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
+  const fields = document.createElement("div");
+  fields.className = "heading-fields";
   const select = document.createElement("select");
-  ["H1", "H2", "H3"].forEach((level) => {
-    const option = document.createElement("option"); option.value = level.toLowerCase(); option.textContent = level; option.selected = block.level === option.value; select.appendChild(option);
+  ["H1", "H2", "H3", "H4", "H5", "H6"].forEach((level) => {
+    const option = document.createElement("option");
+    option.value = level.toLowerCase();
+    option.textContent = level;
+    option.selected = block.level === option.value;
+    select.appendChild(option);
   });
   const input = document.createElement("input");
-  input.type = "text"; input.value = block.text || ""; input.placeholder = "Текст заголовка";
-  select.addEventListener("change", () => { block.level = select.value; updateEditorState(); });
-  input.addEventListener("input", () => { block.text = input.value; updateEditorState(); });
-  container.append(select, input);
+  input.type = "text";
+  input.value = block.text || "";
+  input.placeholder = "Текст заголовка";
+  select.addEventListener("change", () => {
+    block.level = select.value;
+    updateEditorState();
+  });
+  input.addEventListener("input", () => {
+    block.text = input.value;
+    updateEditorState();
+  });
+  fields.append(select, input);
+
+  const alignToolbar = document.createElement("div");
+  alignToolbar.className = "heading-align-toolbar";
+  alignToolbar.setAttribute("aria-label", "Выравнивание заголовка");
+  const alignments = [
+    { value: "left", label: "По левому краю", path: "M4 6h16M4 12h11M4 18h16" },
+    { value: "center", label: "По центру", path: "M4 6h16M7 12h10M4 18h16" },
+    { value: "right", label: "По правому краю", path: "M4 6h16M9 12h11M4 18h16" },
+  ];
+  const syncAlignment = () => {
+    alignToolbar.querySelectorAll("[data-align]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.align === block.align);
+      button.setAttribute("aria-pressed", String(button.dataset.align === block.align));
+    });
+  };
+  alignments.forEach(({ value, label, path }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "heading-align-button";
+    button.dataset.align = value;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    button.addEventListener("click", () => {
+      block.align = value;
+      syncAlignment();
+      updateEditorState();
+    });
+    alignToolbar.appendChild(button);
+  });
+  syncAlignment();
+  container.append(fields, alignToolbar);
 }
 
 function buildRichTextToolbar(toolbar, area, block) {
