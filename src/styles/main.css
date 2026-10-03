@@ -3326,3 +3326,5 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
 
 .editor-admin-button { color: var(--amber); }
 .editor-admin-button:hover, .editor-admin-button:focus-visible { color: var(--green); }
+
+.reader-program-lesson.is-completed .reader-program-lesson-state::after { content: "✓"; display: block; color: var(--milk); font: 800 7px/9px "Urbanist", sans-serif; text-align: center; }
