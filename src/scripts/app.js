@@ -43,6 +43,7 @@ const structureRows = $("#structureRows");
 const addButton = $("#addButton");
 const saveStructure = $("#saveStructure");
 const cancelStructure = $("#cancelStructure");
+const structureDirtyIndicator = $("#structureDirtyIndicator");
 const notice = $("#notice");
 const confirmLayer = $("#confirmLayer");
 const confirmKicker = $(".confirm-kicker", confirmLayer);
@@ -50,6 +51,11 @@ const confirmTitle = $("#confirmTitle");
 const confirmCopy = $("#confirmCopy");
 const confirmNo = $("#confirmNo");
 const confirmYes = $("#confirmYes");
+const exitConfirmLayer = $("#exitConfirmLayer");
+const exitConfirmCopy = $("#exitConfirmCopy");
+const exitConfirmCancel = $("#exitConfirmCancel");
+const exitConfirmDiscard = $("#exitConfirmDiscard");
+const exitConfirmSave = $("#exitConfirmSave");
 const editorPage = $("#editorPage");
 const editorLogoutButton = $("#editorLogoutButton");
 const editorRoleLabel = $("#editorRoleLabel");
@@ -60,6 +66,7 @@ const lessonNameInput = $("#lessonNameInput");
 const lessonBlocks = $("#lessonBlocks");
 const addBlockButton = $("#addBlockButton");
 const editorState = $("#editorState");
+const editorDirtyIndicator = $("#editorDirtyIndicator");
 const lessonVisibility = $("#lessonVisibility");
 const allowDownloads = $("#allowDownloads");
 const deleteLesson = $("#deleteLesson");
@@ -118,6 +125,7 @@ const newPasswordEye = $("#newPasswordEye");
 const repeatPasswordEye = $("#repeatPasswordEye");
 
 const STORAGE_KEY = "rko-course-structure-v1";
+const COLLAPSED_STORAGE_KEY = "rko-course-collapsed-v1";
 const SETTINGS_KEY = "rko-platform-settings-v1";
 const PROGRESS_KEY = "rko-lesson-progress-v1";
 const ACCOUNT_STORAGE_KEY = "rko-platform-accounts-v1";
@@ -160,6 +168,7 @@ let selectedId = null;
 let pendingDeleteId = null;
 let pendingDeleteContext = "structure";
 let openMenuId = null;
+let pendingExitTarget = null;
 let editingId = null;
 let coursePath = [];
 let collapsedIds = new Set();
@@ -347,6 +356,25 @@ function loadSavedStructure() {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     return normalizeStructure(Array.isArray(stored) ? stored : clone(DEFAULT_STRUCTURE));
   } catch { return clone(DEFAULT_STRUCTURE); }
+}
+
+function collapsedStorageKey(account = currentAccount) {
+  return COLLAPSED_STORAGE_KEY + ":" + (account?.login || "guest");
+}
+
+function loadCollapsedIds(account = currentAccount) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(collapsedStorageKey(account)));
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsedIds() {
+  try {
+    localStorage.setItem(collapsedStorageKey(), JSON.stringify([...collapsedIds]));
+  } catch {}
 }
 
 function normalizeStructure(items) {
@@ -582,6 +610,7 @@ function showWelcome(account) {
 
 function showDashboard(account) {
   currentAccount = account;
+  collapsedIds = loadCollapsedIds(account);
   localStorage.setItem(SESSION_KEY, account.login);
   lessonProgressState = loadLessonProgress(account);
   dashboardIsSwitching = false;
@@ -649,14 +678,9 @@ function setDashboardMode(nextMode) {
 }
 
 function collapseAllStructure() {
-  collapsedIds = new Set();
-  const collect = (items) => items.forEach((item) => {
-    if (item.children) {
-      collapsedIds.add(item.id);
-      collect(item.children);
-    }
-  });
-  collect(draftStructure);
+  const ids = collectIds(draftStructure);
+  collapsedIds = new Set([...collapsedIds].filter((id) => ids.has(id)));
+  saveCollapsedIds();
 }
 
 function updateTabIndicator() {
@@ -674,17 +698,38 @@ function renderStructure() {
       const hiddenByParent = ancestorHidden || !item.visible;
       const status = statusFor(item);
       const row = document.createElement("div");
-      row.className = `structure-row${selectedId === item.id ? " is-selected" : ""}${hiddenByParent ? " is-hidden-row" : ""}${dragTargetId === item.id ? " is-drag-target" : ""}`;
+      row.className = "structure-row"
+        + (selectedId === item.id ? " is-selected" : "")
+        + (hiddenByParent ? " is-hidden-row" : "")
+        + (dragTargetId === item.id ? " is-drag-target" : "");
       row.dataset.id = item.id;
-      if (openMenuId === item.id) row.classList.add("has-open-menu");
       row.style.setProperty("--depth", depth);
       const canCollapse = item.type !== "lesson";
-      row.innerHTML = `<div class="row-main"><button class="drag-handle" type="button" data-action="drag" aria-label="Переместить ${item.title}"><span class="drag-mark" aria-hidden="true">⠿</span></button>${canCollapse ? `<button class="collapse-button${collapsedIds.has(item.id) ? " is-collapsed" : ""}" type="button" data-action="collapse" aria-label="${collapsedIds.has(item.id) ? "Развернуть" : "Свернуть"} ${item.title}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : '<span class="collapse-spacer"></span>'}<div class="row-select" data-action="select" role="button" tabindex="0" aria-pressed="${selectedId === item.id}"><span class="row-title"></span></div></div><span class="row-status row-status--${status.tone}"><i></i>${status.label}</span><button class="visibility-button" type="button" data-action="visibility" aria-label="${item.visible ? "Скрыть" : "Показать"} ${item.title}"><svg class="eye-svg${item.visible ? "" : " is-closed"}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><path class="eye-slash" d="M4 4l16 16" stroke="currentColor" stroke-width="1.5"/></svg></button><div class="row-menu-wrap"><button class="more-button" type="button" data-action="menu" aria-label="Действия для ${item.title}">•••</button>${openMenuId === item.id ? actionMenu(item) : ""}</div>`;
+      const editorEnabled = item.type === "lesson" && selectedId === item.id;
+      const editorDisabled = !editorEnabled;
+      const eyeClass = item.visible ? "" : " is-closed";
+      const eyeLabel = item.visible ? "Скрыть" : "Показать";
+      const collapseMarkup = canCollapse
+        ? '<button class="collapse-button' + (collapsedIds.has(item.id) ? ' is-collapsed' : '') + '" type="button" data-action="collapse" aria-label="' + (collapsedIds.has(item.id) ? 'Развернуть' : 'Свернуть') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+        : '<span class="collapse-spacer"></span>';
+      const editClass = "structure-icon-button lesson-edit-button" + (editorDisabled ? " is-disabled" : " is-active");
+      row.innerHTML =
+        '<div class="row-main"><button class="drag-handle" type="button" data-action="drag" aria-label="Переместить"><span class="drag-mark" aria-hidden="true">⠿</span></button>'
+        + collapseMarkup
+        + '<div class="row-select" data-action="select" role="button" tabindex="0" aria-pressed="' + (selectedId === item.id) + '"><span class="row-title"></span></div></div>'
+        + '<span class="row-status row-status--' + status.tone + ' status-transition"><i></i><span>' + status.label + '</span></span>'
+        + '<div class="row-actions" aria-label="Действия">'
+        + '<button class="visibility-button" type="button" data-action="visibility" aria-label="' + eyeLabel + '"><svg class="eye-svg' + eyeClass + '" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><path class="eye-slash" d="M4 4l16 16" stroke="currentColor" stroke-width="1.5"/></svg></button>'
+        + '<button class="structure-icon-button rename-button" type="button" data-action="rename" aria-label="Переименовать"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 16.5V20h3.5L18.8 8.7l-3.5-3.5L4 16.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m14.2 6.7 3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>'
+        + '<button class="' + editClass + '" type="button" data-action="edit" aria-label="Открыть редактор урока"' + (editorDisabled ? " disabled" : "") + '><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3.5h9l5 5V20.5H5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3.5v5h5M9 16.5l4.9-4.9 2.1 2.1-4.9 4.9L9 19zM13.9 11.6l1.2-1.2 2.1 2.1-1.2 1.2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>'
+        + '<button class="structure-icon-button delete-button" type="button" data-action="delete" aria-label="Удалить"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+        + '</div>';
       row.querySelector(".row-title").textContent = item.title;
       container.appendChild(row);
       if (item.children) {
         const children = document.createElement("div");
-        children.className = `structure-children${collapsedIds.has(item.id) || animateStructureId === item.id ? " is-collapsed" : ""}`;
+        children.className = "structure-children"
+          + (collapsedIds.has(item.id) || animateStructureId === item.id ? " is-collapsed" : "");
         const inner = document.createElement("div");
         inner.className = "structure-children-inner";
         children.appendChild(inner);
@@ -697,21 +742,12 @@ function renderStructure() {
   if (!fragment.childNodes.length) {
     const empty = document.createElement("p");
     empty.className = "structure-empty";
-    empty.textContent = "СТРУКТУРА ПОКА ПУСТА. НАЖМИ «+ ДОБАВИТЬ», ЧТОБЫ СОЗДАТЬ РАЗДЕЛ.";
+    empty.textContent = "СТРУКТУРА ПОКА ПУСТА. НАЖМИ «+ РАЗДЕЛ / МОДУЛЬ», ЧТОБЫ СОЗДАТЬ РАЗДЕЛ.";
     fragment.appendChild(empty);
   }
   structureRows.appendChild(fragment);
-  const openActionMenu = structureRows.querySelector(".has-open-menu .action-menu");
-  if (openActionMenu) {
-    const row = openActionMenu.closest(".structure-row");
-    requestAnimationFrame(() => {
-      if (!row) return;
-      const rect = row.getBoundingClientRect();
-      if (rect.bottom + openActionMenu.offsetHeight > window.innerHeight - 12) openActionMenu.classList.add("opens-up");
-    });
-  }
   if (animateStructureId) {
-    const opening = structureRows.querySelector(`[data-id="${animateStructureId}"]`)?.nextElementSibling;
+    const opening = structureRows.querySelector('[data-id="' + animateStructureId + '"]')?.nextElementSibling;
     requestAnimationFrame(() => opening?.classList.remove("is-collapsed"));
     animateStructureId = null;
   }
@@ -727,13 +763,19 @@ function updateActionState() {
   const changed = JSON.stringify(draftStructure) !== JSON.stringify(savedStructure);
   saveStructure.classList.toggle("is-enabled", changed);
   cancelStructure.classList.toggle("is-enabled", changed);
+  structureDirtyIndicator?.classList.toggle("is-visible", changed);
+  structureView?.classList.toggle("has-unsaved", changed);
+  const selected = selectedId ? findNode(draftStructure, selectedId)?.item : null;
+  const canAddLesson = Boolean(selected && (selected.type === "section" || selected.type === "module"));
+  addLessonButton.disabled = !canAddLesson;
+  addLessonButton.setAttribute("aria-disabled", String(!canAddLesson));
 }
 
 function addItem() {
   const target = selectedId ? findNode(draftStructure, selectedId) : null;
   let newItem;
   let parentToExpand = null;
-  if (!target || (target.item.type === "lesson" && target.parent?.type !== "module")) {
+  if (!target) {
     newItem = { id: uid("section"), type: "section", title: "Новый раздел", visible: platformSettings.newItemsVisible, children: [] };
     draftStructure.push(newItem);
   } else if (target.item.type === "section") {
@@ -742,28 +784,38 @@ function addItem() {
     target.item.children ??= [];
     target.item.children.push(newItem);
   } else {
-    newItem = { id: uid("lesson"), type: "lesson", title: "Новый урок", visible: platformSettings.newItemsVisible, allowDownloads: platformSettings.newItemsAllowDownloads, blocks: [] };
-    const module = target.item.type === "module" ? target.item : target.parent;
-    parentToExpand = module;
-    module.children ??= [];
-    module.children.push(newItem);
+    const moduleNode = target.item.type === "module"
+      ? target
+      : target.parent?.type === "module"
+        ? findNode(draftStructure, target.parent.id)
+        : null;
+    if (!moduleNode) {
+      showNotice("ВЫБЕРИ РАЗДЕЛ ИЛИ МОДУЛЬ", "error");
+      return;
+    }
+    newItem = { id: uid("module"), type: "module", title: "Новый модуль", visible: platformSettings.newItemsVisible, children: [] };
+    const index = moduleNode.siblings.findIndex((item) => item.id === moduleNode.item.id);
+    moduleNode.siblings.splice(index + 1, 0, newItem);
+    parentToExpand = moduleNode.parent || moduleNode.item;
   }
   if (parentToExpand) collapsedIds.delete(parentToExpand.id);
+  saveCollapsedIds();
   selectedId = newItem.id;
   renderStructure();
   startInlineRename(newItem.id, true);
 }
 
-function addLessonToSection() {
+function addLesson() {
   const target = selectedId ? findNode(draftStructure, selectedId) : null;
-  if (!target || target.item.type !== "section") {
-    showNotice("СНАЧАЛА ВЫБЕРИ РАЗДЕЛ", "error");
+  if (!target || !["section", "module"].includes(target.item.type)) {
+    showNotice("СНАЧАЛА ВЫБЕРИ РАЗДЕЛ ИЛИ МОДУЛЬ", "error");
     return;
   }
   const newItem = { id: uid("lesson"), type: "lesson", title: "Новый урок", visible: platformSettings.newItemsVisible, allowDownloads: platformSettings.newItemsAllowDownloads, blocks: [] };
   target.item.children ??= [];
   target.item.children.push(newItem);
   collapsedIds.delete(target.item.id);
+  saveCollapsedIds();
   selectedId = newItem.id;
   renderStructure();
   startInlineRename(newItem.id, true);
@@ -774,7 +826,6 @@ function startInlineRename(id, selectAll = false) {
   const row = structureRows.querySelector(`[data-id="${id}"]`);
   if (!found || !row) return;
   editingId = id;
-  openMenuId = null;
   const title = row.querySelector(".row-title");
   const input = document.createElement("input");
   input.className = "rename-input";
@@ -800,7 +851,6 @@ function toggleVisibility(id) {
   const found = findNode(draftStructure, id);
   if (!found) return;
   found.item.visible = !found.item.visible;
-  openMenuId = null;
   renderStructure();
 }
 
@@ -994,7 +1044,7 @@ async function deletePending() {
       && (account.role !== "admin" || isOwnerAccount(currentAccount));
     if (canDelete) {
       if (backendConnected && account.id) {
-        const { response } = await apiRequest(`/accounts/${account.id}`, { method: "DELETE" });
+        const { response } = await apiRequest("/accounts/" + account.id, { method: "DELETE" });
         if (!response.ok) {
           closeDeleteDialog();
           showNotice("НЕ УДАЛОСЬ УДАЛИТЬ АККАУНТ", "error");
@@ -1015,16 +1065,20 @@ async function deletePending() {
   const found = findNode(draftStructure, deletingId);
   if (found) found.siblings.splice(found.siblings.findIndex((item) => item.id === deletingId), 1);
   if (context === "editor") {
-    savedStructure = clone(draftStructure);
-    baselineIds = collectIds(savedStructure);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStructure));
-    syncCourseToServer();
+    const persisted = findNode(savedStructure, deletingId);
+    if (persisted) {
+      persisted.siblings.splice(persisted.siblings.findIndex((item) => item.id === deletingId), 1);
+      baselineIds = collectIds(savedStructure);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStructure));
+      syncCourseToServer();
+    }
     editorLessonId = null;
     editorDraft = null;
     editorOriginal = null;
   }
   if (selectedId === deletingId) selectedId = null;
   closeDeleteDialog();
+  saveCollapsedIds();
   renderStructure();
   renderCourse();
   if (context === "editor") {
@@ -1046,6 +1100,7 @@ function saveDraft() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStructure));
   syncCourseToServer();
   selectedId = null;
+  saveCollapsedIds();
   renderStructure();
   coursePath = [];
   renderCourse();
@@ -1056,9 +1111,36 @@ function cancelDraft() {
   if (JSON.stringify(draftStructure) === JSON.stringify(savedStructure)) return;
   draftStructure = clone(savedStructure);
   selectedId = null;
-  openMenuId = null;
   renderStructure();
   showNotice("ИЗМЕНЕНИЯ ОТМЕНЕНЫ");
+}
+
+function hasUnsavedStructureChanges() {
+  return JSON.stringify(draftStructure) !== JSON.stringify(savedStructure);
+}
+
+function hasUnsavedEditorChanges() {
+  return Boolean(editorDraft && editorOriginal && JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal));
+}
+
+function openExitConfirm() {
+  if (!exitConfirmLayer) return;
+  exitConfirmCopy.textContent = "У вас есть несохранённые изменения. Что сделать перед выходом?";
+  exitConfirmLayer.classList.add("is-visible");
+  exitConfirmLayer.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => exitConfirmCancel?.focus(), 100);
+}
+
+function closeExitConfirm() {
+  exitConfirmLayer?.classList.remove("is-visible");
+  exitConfirmLayer?.setAttribute("aria-hidden", "true");
+}
+
+function leaveAdmin({ save = false } = {}) {
+  if (save) saveDraft();
+  else if (hasUnsavedStructureChanges()) cancelDraft();
+  closeExitConfirm();
+  setDashboardMode("learning");
 }
 
 function showNotice(message, tone = "default") {
@@ -1545,6 +1627,8 @@ function openLessonReader(lesson) {
   learningTitle.classList.add("is-reader-hidden");
   lessonReader.classList.add("is-visible");
   lessonReader.setAttribute("aria-hidden", "false");
+  lessonReader.scrollTop = 0;
+  requestAnimationFrame(() => { lessonReader.scrollTop = 0; });
   syncConiferAvailability();
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
@@ -1764,8 +1848,8 @@ function openLessonEditor(id) {
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
   editorPath.textContent = path.map((item) => item.title).join("  /  ");
-  const roleText = isOwnerAccount(currentAccount) ? "ВЛАДЕЛЕЦ" : currentAccount?.role === "admin" ? "АДМИН" : "УЧЕНИК";
-  editorRoleLabel.textContent = `[ RKO / ${roleText} ]`;
+  const roleText = "АДМИН";
+  editorRoleLabel.textContent = "[ RKO / АДМИН ]";
   editorAccountRole.textContent = roleText;
   lessonNameInput.value = editorDraft.title;
   allowDownloads.checked = editorDraft.allowDownloads;
@@ -1802,7 +1886,9 @@ function updateEditorState() {
   if (!editorDraft || !editorOriginal) return;
   const changed = JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal);
   editorState.classList.toggle("is-changed", changed);
-  editorState.lastChild.textContent = changed ? "ИЗМЕНЕНО" : "СОХРАНЕНО";
+  const editorStateLabel = editorState.querySelector("span");
+  if (editorStateLabel) editorStateLabel.textContent = changed ? "ИЗМЕНЕНО" : "СОХРАНЕНО";
+  editorDirtyIndicator?.classList.toggle("is-visible", changed);
   saveLesson.classList.toggle("is-enabled", changed);
 }
 
@@ -2042,10 +2128,14 @@ function saveEditorLesson() {
   if (!editorDraft) return;
   editorDraft.title = lessonNameInput.value.trim() || "Без названия";
   editorDraft.allowDownloads = allowDownloads.checked;
-  const found = findNode(draftStructure, editorLessonId);
-  if (!found) return;
-  Object.assign(found.item, clone(editorDraft));
-  savedStructure = clone(draftStructure);
+  const draftFound = findNode(draftStructure, editorLessonId);
+  const persisted = findNode(savedStructure, editorLessonId);
+  if (!draftFound || !persisted) {
+    showNotice("СНАЧАЛА СОХРАНИ СТРУКТУРУ", "error");
+    return;
+  }
+  Object.assign(draftFound.item, clone(editorDraft));
+  Object.assign(persisted.item, clone(editorDraft));
   baselineIds = collectIds(savedStructure);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStructure));
   syncCourseToServer();
@@ -2092,8 +2182,17 @@ authForm.addEventListener("submit", async (event) => {
   showWelcome(account);
 });
 adminMark.addEventListener("click", () => {
-  if (adminMark.classList.contains("is-visible")) setDashboardMode(dashboardMode === "admin" ? "learning" : "admin");
+  if (!adminMark.classList.contains("is-visible")) return;
+  if (dashboardMode === "admin" && hasUnsavedStructureChanges()) {
+    openExitConfirm();
+    return;
+  }
+  setDashboardMode(dashboardMode === "admin" ? "learning" : "admin");
 });
+exitConfirmCancel?.addEventListener("click", closeExitConfirm);
+exitConfirmDiscard?.addEventListener("click", () => leaveAdmin({ save: false }));
+exitConfirmSave?.addEventListener("click", () => leaveAdmin({ save: true }));
+exitConfirmLayer?.addEventListener("click", (event) => { if (event.target === exitConfirmLayer) closeExitConfirm(); });
 adminTabs.forEach((tab) => tab.addEventListener("click", () => {
   adminTabs.forEach((item) => item.classList.toggle("is-current", item === tab));
   adminViews.forEach((view) => view.classList.toggle("is-current", view.dataset.adminView === tab.dataset.tab));
@@ -2105,31 +2204,31 @@ structureRows.addEventListener("click", (event) => {
   if (!row || editingId) return;
   const id = row.dataset.id;
   const action = event.target.closest("[data-action]")?.dataset.action;
-  const menuAction = event.target.closest("[data-menu-action]")?.dataset.menuAction;
-  if (menuAction) {
-    if (menuAction === "edit") openLessonEditor(id);
-    if (menuAction === "rename") startInlineRename(id, true);
-    if (menuAction === "delete") openDeleteDialog(id);
-    return;
-  }
   if (action === "visibility") return toggleVisibility(id);
   if (action === "collapse") {
     const collapseButton = event.target.closest("[data-action='collapse']");
     const children = row.nextElementSibling?.classList.contains("structure-children") ? row.nextElementSibling : null;
     const willCollapse = !collapsedIds.has(id);
     willCollapse ? collapsedIds.add(id) : collapsedIds.delete(id);
+    saveCollapsedIds();
     collapseButton?.classList.toggle("is-collapsed", willCollapse);
     children?.classList.toggle("is-collapsed", willCollapse);
     return;
   }
   if (action === "drag") return;
-  if (action === "menu") {
-    openMenuId = openMenuId === id ? null : id;
+  if (action === "rename") {
+    selectedId = id;
     renderStructure();
+    startInlineRename(id, true);
     return;
   }
+  if (action === "edit") {
+    const item = findNode(draftStructure, id)?.item;
+    if (item?.type === "lesson" && selectedId === id) openLessonEditor(id);
+    return;
+  }
+  if (action === "delete") return openDeleteDialog(id);
   selectedId = selectedId === id ? null : id;
-  openMenuId = null;
   renderStructure();
 });
 structureRows.addEventListener("pointerdown", (event) => {
@@ -2140,23 +2239,10 @@ structureRows.addEventListener("pointerdown", (event) => {
 $("#structureTable").addEventListener("click", (event) => {
   if (event.target.closest(".structure-row")) return;
   selectedId = null;
-  openMenuId = null;
   renderStructure();
 });
-document.addEventListener("click", (event) => {
-  if (openMenuId && !event.target.closest(".row-menu-wrap")) {
-    openMenuId = null;
-    renderStructure();
-  }
-  const clickedControl = event.target.closest("button, input, select, textarea, .action-menu, .structure-row");
-  if (structureView?.classList.contains("is-current") && !clickedControl && (selectedId || openMenuId)) {
-    selectedId = null;
-    openMenuId = null;
-    renderStructure();
-  }
-});
 addButton.addEventListener("click", addItem);
-addLessonButton.addEventListener("click", addLessonToSection);
+addLessonButton.addEventListener("click", addLesson);
 saveStructure.addEventListener("click", saveDraft);
 cancelStructure.addEventListener("click", cancelDraft);
 confirmNo.addEventListener("click", closeDeleteDialog);
@@ -2296,6 +2382,14 @@ resetColors.addEventListener("click", () => {
   applyPlatformSettings();
   showNotice("ЦВЕТА ВОССТАНОВЛЕНЫ", "success");
 });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Delete" || editingId || !selectedId || !structureView?.classList.contains("is-current")) return;
+  const target = event.target;
+  if (target.matches("input, textarea, select, [contenteditable='true']")) return;
+  event.preventDefault();
+  openDeleteDialog(selectedId);
+});
+
 window.addEventListener("resize", updateTabIndicator);
 logoutButton.addEventListener("click", () => logoutFrom(logoutButton));
 accountName.addEventListener("click", () => { if (currentAccount) openAccountModal("self", currentAccount); });
