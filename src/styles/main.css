@@ -3659,3 +3659,9 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     height: 54px;
   }
 }
+
+/* Consistent thicker outline on every back control. */
+.course-guide-back,
+.editor-back {
+  border-width: 2px;
+}
