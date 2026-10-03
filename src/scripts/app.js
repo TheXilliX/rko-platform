@@ -148,14 +148,27 @@ const CALLOUT_META = {
 };
 const CALLOUT_ICONS = ["!", "?", "✓"];
 const CALLOUT_ICON_VARIANTS = { "!": "important", "?": "tip", "✓": "result" };
+const CALLOUT_DEFAULT_COLOR = "#2F7D57";
+const CALLOUT_COLORS = [
+  { label: "ЗЕЛЁНЫЙ", value: "#2F7D57" },
+  { label: "ЯНТАРНЫЙ", value: "#FFAE42" },
+  { label: "СИНИЙ", value: "#5C7EA6" },
+  { label: "СЕРЫЙ", value: "#71869B" },
+  { label: "КРАСНЫЙ", value: "#B45D59" },
+];
 const normalizeCalloutVariant = (variant) => CALLOUT_META[variant] ? variant : "important";
 const normalizeCalloutIcon = (icon, variant = "important") => CALLOUT_ICONS.includes(icon) ? icon : CALLOUT_META[variant]?.icon || "!";
+const normalizeCalloutColor = (color) => {
+  const value = String(color || "").toUpperCase();
+  return CALLOUT_COLORS.some((item) => item.value === value) ? value : CALLOUT_DEFAULT_COLOR;
+};
 function normalizeCalloutBlock(block) {
   block.variant = normalizeCalloutVariant(block.variant);
   const meta = CALLOUT_META[block.variant];
   if (!Object.prototype.hasOwnProperty.call(block, "label")) block.label = meta.label;
   block.label = String(block.label ?? "");
   block.icon = normalizeCalloutIcon(block.icon, block.variant);
+  block.color = normalizeCalloutColor(block.color);
   block.html ??= "";
   return block;
 }
@@ -1729,14 +1742,16 @@ function renderReaderProgram(currentLessonId) {
   const visibleChildren = (section.children || [])
     .filter((child) => child.visible !== false && isEffectivelyVisible(child.id));
   const moduleIds = visibleChildren.filter((child) => child.type === "module").map((child) => child.id);
-  let storedState = true;
-  try {
-    storedState = localStorage.getItem(readerProgramStorageKey()) !== null;
-  } catch {}
-  if (!storedState) {
-    readerProgramCollapsed = new Set(moduleIds.filter((id) => id !== currentModule?.id));
-    saveReaderProgramCollapsed();
-  }
+
+  // Keep the current module open, but collapse every other module whenever
+  // the reader is opened or the lesson changes.
+  const nextCollapsed = new Set(readerProgramCollapsed);
+  moduleIds.forEach((id) => {
+    if (id === currentModule?.id) nextCollapsed.delete(id);
+    else nextCollapsed.add(id);
+  });
+  readerProgramCollapsed = nextCollapsed;
+  saveReaderProgramCollapsed();
 
   const appendLesson = (lesson, host) => {
     const button = document.createElement("button");
@@ -1822,12 +1837,19 @@ function createReaderMediaPlayer(type, url) {
   const player = document.createElement("div");
   player.className = "reader-media-player";
   player.dataset.mediaType = type;
+  player.tabIndex = 0;
+  player.setAttribute("role", "group");
+  player.setAttribute("aria-label", type === "video" ? "Видеоплеер" : "Аудиоплеер");
 
   const media = document.createElement(type);
   media.className = "reader-media-element";
   media.src = url;
   media.preload = "metadata";
   media.controls = false;
+  media.removeAttribute("controls");
+  media.tabIndex = 0;
+  media.setAttribute("controlslist", "nodownload noplaybackrate");
+  media.disablePictureInPicture = true;
   if (type === "video") {
     media.playsInline = true;
     media.setAttribute("playsinline", "");
@@ -1895,6 +1917,15 @@ function createReaderMediaPlayer(type, url) {
   center.innerHTML = icons.play;
   if (type !== "video") center.hidden = true;
 
+  let centerTimer;
+  const flashCenter = () => {
+    if (type !== "video") return;
+    player.classList.remove("is-center-flash");
+    void player.offsetWidth;
+    player.classList.add("is-center-flash");
+    window.clearTimeout(centerTimer);
+    centerTimer = window.setTimeout(() => player.classList.remove("is-center-flash"), 520);
+  };
   const syncPlay = () => {
     const playing = !media.paused && !media.ended;
     play.innerHTML = playing ? icons.pause : icons.play;
@@ -1916,25 +1947,33 @@ function createReaderMediaPlayer(type, url) {
     volumeButton.setAttribute("aria-label", silent ? "Звук выключен" : "Громкость");
     volume.value = silent ? "0" : String(media.volume);
   };
-  const togglePlayback = () => {
-    if (media.paused) media.play().catch(() => {});
-    else media.pause();
-  };
   const revealControls = () => {
     player.classList.remove("is-idle");
     window.clearTimeout(player._idleTimer);
     player._idleTimer = window.setTimeout(() => {
-      if (!media.paused) player.classList.add("is-idle");
+      player.classList.add("is-idle");
     }, 2200);
   };
+  const togglePlayback = () => {
+    if (media.paused) media.play().catch(() => {});
+    else media.pause();
+    syncPlay();
+    flashCenter();
+    revealControls();
+  };
 
-  play.addEventListener("click", togglePlayback);
+  play.addEventListener("click", (event) => {
+    event.stopPropagation();
+    togglePlayback();
+  });
   center.addEventListener("click", (event) => {
     event.stopPropagation();
     togglePlayback();
-    revealControls();
   });
-  media.addEventListener("click", togglePlayback);
+  media.addEventListener("click", (event) => {
+    event.stopPropagation();
+    togglePlayback();
+  });
   progress.addEventListener("input", () => {
     if (Number.isFinite(media.duration) && media.duration > 0) {
       media.currentTime = (Number(progress.value) / 1000) * media.duration;
@@ -1952,7 +1991,8 @@ function createReaderMediaPlayer(type, url) {
     syncVolume();
     revealControls();
   });
-  fullscreen.addEventListener("click", async () => {
+  fullscreen.addEventListener("click", async (event) => {
+    event.stopPropagation();
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else if (player.requestFullscreen) await player.requestFullscreen();
@@ -1960,20 +2000,27 @@ function createReaderMediaPlayer(type, url) {
     } catch {}
     revealControls();
   });
-  [player, media, controls].forEach((target) => {
-    target.addEventListener("pointermove", revealControls, { passive: true });
-    target.addEventListener("touchstart", revealControls, { passive: true });
+  player.addEventListener("pointermove", revealControls, { passive: true });
+  player.addEventListener("pointerdown", revealControls, { passive: true });
+  player.addEventListener("touchstart", revealControls, { passive: true });
+  player.addEventListener("keydown", (event) => {
+    if (event.code !== "Space") return;
+    if (event.target.matches("button, input, textarea, select, [contenteditable=\"true\"]")) return;
+    event.preventDefault();
+    togglePlayback();
   });
   media.addEventListener("play", syncPlay);
-  media.addEventListener("pause", () => { syncPlay(); revealControls(); });
-  media.addEventListener("ended", () => { syncPlay(); revealControls(); });
+  media.addEventListener("pause", syncPlay);
+  media.addEventListener("ended", () => {
+    syncPlay();
+    revealControls();
+  });
   media.addEventListener("timeupdate", syncTime);
   media.addEventListener("loadedmetadata", syncTime);
   media.addEventListener("volumechange", syncVolume);
   syncPlay();
   syncVolume();
   syncTime();
-
   controls.append(play, progress, time, volumeWrap, fullscreen);
   player.append(media, center, controls);
   revealControls();
@@ -2007,6 +2054,7 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
       const variant = normalizeCalloutVariant(block.variant);
       const meta = CALLOUT_META[variant];
       element.classList.add("callout--" + variant);
+      element.style.setProperty("--callout-color", normalizeCalloutColor(block.color));
       element.setAttribute("role", "note");
       const marker = document.createElement("span");
       marker.className = "callout-marker";
@@ -2267,8 +2315,10 @@ function renderEditorBlocks() {
   lessonBlocks.innerHTML = "";
   editorDraft.blocks.forEach((block) => {
     const row = document.createElement("div");
+    if (block.type === "callout") normalizeCalloutBlock(block);
     row.className = `lesson-block lesson-block--${block.type}${blockDragId === block.id ? " is-dragging" : ""}${blockDragTargetId === block.id && blockDragId !== block.id ? " is-drag-target" : ""}${blockDragTargetId === block.id && blockDragAfter ? " is-drop-after" : ""}`;
     row.dataset.blockId = block.id;
+    if (block.type === "callout") row.style.setProperty("--callout-color", block.color);
     const label = { heading: "ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
     row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-delete" type="button" data-block-action="delete" aria-label="Удалить блок"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     const editor = row.querySelector(".block-editor");
@@ -2443,6 +2493,36 @@ function renderCalloutBlock(container, block) {
   });
   syncIcon();
 
+  const colorLabel = document.createElement("span");
+  colorLabel.className = "callout-setting-label";
+  colorLabel.textContent = "ЦВЕТ";
+
+  const colorPicker = document.createElement("div");
+  colorPicker.className = "callout-color-picker";
+  colorPicker.setAttribute("aria-label", "Цвет блока");
+  const syncColor = () => {
+    colorPicker.querySelectorAll("[data-callout-color]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.calloutColor === block.color);
+      button.setAttribute("aria-pressed", String(button.dataset.calloutColor === block.color));
+    });
+  };
+  CALLOUT_COLORS.forEach((color) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "callout-color-button";
+    button.dataset.calloutColor = color.value;
+    button.title = color.label;
+    button.setAttribute("aria-label", color.label);
+    button.style.setProperty("--swatch", color.value);
+    button.addEventListener("click", () => {
+      block.color = color.value;
+      syncColor();
+      updateEditorState();
+    });
+    colorPicker.appendChild(button);
+  });
+  syncColor();
+
   const label = document.createElement("input");
   label.className = "callout-label-input";
   label.type = "text";
@@ -2454,7 +2534,7 @@ function renderCalloutBlock(container, block) {
     updateEditorState();
   });
 
-  settings.append(iconLabel, iconPicker, label);
+  settings.append(iconLabel, iconPicker, colorLabel, colorPicker, label);
 
   const toolbar = document.createElement("div");
   const area = document.createElement("div");
@@ -2520,7 +2600,7 @@ function addLessonBlock(type) {
   const block = { id: uid("block"), type };
   if (type === "heading") Object.assign(block, { level: "h1", align: "left", text: "" });
   if (type === "text" || type === "callout") block.html = "";
-  if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!" });
+  if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!", color: CALLOUT_DEFAULT_COLOR });
   editorDraft.blocks.push(block);
   closeBlockPicker();
   renderEditorBlocks();
