@@ -3702,12 +3702,7 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   grid-row: 1 / span 4;
 }
 
-/* Never let a browser-native media control bar add a second back/seek control. */
-.reader-media-element::-webkit-media-controls,
-.reader-media-element::-webkit-media-controls-enclosure,
-.reader-media-element::-webkit-media-controls-overlay-enclosure {
-  display: none !important;
-}
+
 .reader-media-player .reader-media-center {
   opacity: 0;
   pointer-events: none;
@@ -3789,4 +3784,111 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     margin-left: auto;
     margin-right: auto;
   }
+}
+
+
+/* Final lesson reader layout: centered lesson, right-hand navigation, native media controls. */
+@media (min-width: 1021px) {
+  .lesson-reader {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(900px, calc(100% - 460px))) minmax(0, 1fr);
+    column-gap: 0;
+    width: 100%;
+    max-width: 1320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    grid-column: 2;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .lesson-reader > .reader-back {
+    position: static;
+    top: auto;
+    z-index: auto;
+    justify-self: start;
+    width: max-content;
+    max-width: 100%;
+    margin-top: 0;
+    margin-bottom: 24px;
+    padding: 8px 18px;
+  }
+
+  .lesson-reader > .reader-title {
+    margin-top: 0;
+    text-align: center;
+  }
+
+  .lesson-reader > .reader-content {
+    margin-top: 48px;
+    text-align: center;
+  }
+
+  .lesson-reader > .reader-navigation {
+    margin-top: 18px;
+  }
+
+  .reader-program {
+    grid-column: 3;
+    grid-row: 1 / span 4;
+    align-self: start;
+    justify-self: stretch;
+    position: sticky;
+    top: 18px;
+    width: calc(100% - 16px);
+    max-height: calc(100svh - 42px);
+    margin-left: 16px;
+    padding: 18px 0 22px;
+  }
+}
+
+@media (max-width: 1020px) {
+  .lesson-reader > .reader-back {
+    position: static;
+    top: auto;
+    z-index: auto;
+    margin-top: 0;
+    margin-bottom: 24px;
+  }
+}
+
+/* Native browser video/audio controls are intentionally used. */
+.reader-media-player {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #171917;
+  text-align: left;
+}
+
+.reader-media-element {
+  display: block;
+  width: 100%;
+  max-height: min(68svh, 680px);
+  background: #171917;
+  object-fit: contain;
+}
+
+.reader-media-player[data-media-type="audio"] {
+  padding: 0;
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--milk));
+}
+
+.reader-media-player[data-media-type="audio"] .reader-media-element {
+  display: block !important;
+  width: 100%;
+  max-height: none;
+  background: transparent;
+  object-fit: initial;
 }
