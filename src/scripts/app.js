@@ -166,6 +166,7 @@ let dashboardMode = "learning";
 let dashboardIsSwitching = false;
 let selectedId = null;
 let pendingDeleteId = null;
+let pendingDeleteBlockId = null;
 let pendingDeleteContext = "structure";
 let openMenuId = null;
 let pendingExitTarget = null;
@@ -175,6 +176,7 @@ let collapsedIds = new Set();
 let dragItemId = null;
 let dragTargetId = null;
 let animateStructureId = null;
+let statusTransitionId = null;
 let blockDragId = null;
 let blockDragTargetId = null;
 let blockDragAfter = false;
@@ -691,6 +693,7 @@ function updateTabIndicator() {
 }
 
 function renderStructure() {
+  const transitionId = statusTransitionId;
   structureRows.innerHTML = "";
   const fragment = document.createDocumentFragment();
   const appendRows = (items, depth = 0, ancestorHidden = false, container = fragment) => {
@@ -705,7 +708,7 @@ function renderStructure() {
       row.dataset.id = item.id;
       row.style.setProperty("--depth", depth);
       const canCollapse = item.type !== "lesson";
-      const editorEnabled = item.type === "lesson" && selectedId === item.id;
+      const editorEnabled = item.type === "lesson";
       const editorDisabled = !editorEnabled;
       const eyeClass = item.visible ? "" : " is-closed";
       const eyeLabel = item.visible ? "Скрыть" : "Показать";
@@ -717,7 +720,7 @@ function renderStructure() {
         '<div class="row-main"><button class="drag-handle" type="button" data-action="drag" aria-label="Переместить"><span class="drag-mark" aria-hidden="true">⠿</span></button>'
         + collapseMarkup
         + '<div class="row-select" data-action="select" role="button" tabindex="0" aria-pressed="' + (selectedId === item.id) + '"><span class="row-title"></span></div></div>'
-        + '<span class="row-status row-status--' + status.tone + ' status-transition"><i></i><span>' + status.label + '</span></span>'
+        + '<span class="row-status row-status--' + status.tone + (transitionId === item.id ? " status-transition" : "") + '><i></i><span>' + status.label + '</span></span>'
         + '<div class="row-actions" aria-label="Действия">'
         + '<button class="visibility-button" type="button" data-action="visibility" aria-label="' + eyeLabel + '"><svg class="eye-svg' + eyeClass + '" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><path class="eye-slash" d="M4 4l16 16" stroke="currentColor" stroke-width="1.5"/></svg></button>'
         + '<button class="structure-icon-button rename-button" type="button" data-action="rename" aria-label="Переименовать"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 16.5V20h3.5L18.8 8.7l-3.5-3.5L4 16.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m14.2 6.7 3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>'
@@ -751,6 +754,7 @@ function renderStructure() {
     requestAnimationFrame(() => opening?.classList.remove("is-collapsed"));
     animateStructureId = null;
   }
+  statusTransitionId = null;
   updateActionState();
 }
 
@@ -801,6 +805,7 @@ function addItem() {
   if (parentToExpand) collapsedIds.delete(parentToExpand.id);
   saveCollapsedIds();
   selectedId = newItem.id;
+  statusTransitionId = newItem.id;
   renderStructure();
   startInlineRename(newItem.id, true);
 }
@@ -817,6 +822,7 @@ function addLesson() {
   collapsedIds.delete(target.item.id);
   saveCollapsedIds();
   selectedId = newItem.id;
+  statusTransitionId = newItem.id;
   renderStructure();
   startInlineRename(newItem.id, true);
 }
@@ -836,7 +842,10 @@ function startInlineRename(id, selectAll = false) {
   const finish = (commit) => {
     if (editingId !== id) return;
     const value = input.value.trim();
-    if (commit && value) found.item.title = value;
+    if (commit && value && value !== found.item.title) {
+      found.item.title = value;
+      statusTransitionId = id;
+    }
     editingId = null;
     renderStructure();
   };
@@ -851,6 +860,7 @@ function toggleVisibility(id) {
   const found = findNode(draftStructure, id);
   if (!found) return;
   found.item.visible = !found.item.visible;
+  statusTransitionId = id;
   renderStructure();
 }
 
@@ -997,6 +1007,20 @@ function autoScrollWhileDragging(y) {
   scrollContainer?.scrollBy({ top: amount, behavior: "auto" });
 }
 
+function openBlockDeleteDialog(id) {
+  const block = editorDraft?.blocks?.find((item) => item.id === id);
+  if (!block) return;
+  pendingDeleteBlockId = id;
+  pendingDeleteContext = "block";
+  pendingConfirmAction = null;
+  confirmCopy.textContent = "Удалить этот блок урока?";
+  confirmKicker.textContent = "УДАЛЕНИЕ";
+  confirmTitle.textContent = "УДАЛИТЬ БЛОК?";
+  confirmLayer.classList.add("is-visible");
+  confirmLayer.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => confirmNo.focus(), 100);
+}
+
 function openDeleteDialog(id) {
   const found = findNode(draftStructure, id);
   if (!found) return;
@@ -1028,6 +1052,7 @@ function openAccountDeleteDialog(account) {
 
 function closeDeleteDialog() {
   pendingDeleteId = null;
+  pendingDeleteBlockId = null;
   pendingAccountLogin = null;
   pendingDeleteContext = "structure";
   pendingConfirmAction = null;
@@ -1058,6 +1083,16 @@ async function deletePending() {
       closeAccountModal();
       showNotice("АККАУНТ УДАЛЁН", "success");
     } else closeDeleteDialog();
+    return;
+  }
+  if (pendingDeleteContext === "block") {
+    const blockId = pendingDeleteBlockId;
+    const scrollTop = editorPage.scrollTop;
+    if (editorDraft) editorDraft.blocks = editorDraft.blocks.filter((block) => block.id !== blockId);
+    closeDeleteDialog();
+    renderEditorBlocks();
+    requestAnimationFrame(() => { editorPage.scrollTop = scrollTop; });
+    showNotice("БЛОК УДАЛЁН", "success");
     return;
   }
   const context = pendingDeleteContext;
@@ -1899,7 +1934,7 @@ function renderEditorBlocks() {
     row.className = `lesson-block lesson-block--${block.type}${blockDragId === block.id ? " is-dragging" : ""}${blockDragTargetId === block.id && blockDragId !== block.id ? " is-drag-target" : ""}${blockDragTargetId === block.id && blockDragAfter ? " is-drop-after" : ""}`;
     row.dataset.blockId = block.id;
     const label = { heading: "ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
-    row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-more" type="button" aria-label="Действия блока">•••</button><div class="block-menu"><button type="button" data-block-action="delete">УДАЛИТЬ</button></div>`;
+    row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-delete" type="button" data-block-action="delete" aria-label="Удалить блок"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     const editor = row.querySelector(".block-editor");
     if (block.type === "heading") renderHeadingBlock(editor, block);
     else if (block.type === "text") renderTextBlock(editor, block);
@@ -2224,12 +2259,33 @@ structureRows.addEventListener("click", (event) => {
   }
   if (action === "edit") {
     const item = findNode(draftStructure, id)?.item;
-    if (item?.type === "lesson" && selectedId === id) openLessonEditor(id);
+    if (item?.type === "lesson") {
+      selectedId = id;
+      renderStructure();
+      openLessonEditor(id);
+    }
     return;
   }
   if (action === "delete") return openDeleteDialog(id);
   selectedId = selectedId === id ? null : id;
   renderStructure();
+});
+structureRows.addEventListener("keydown", (event) => {
+  const row = event.target.closest(".structure-row");
+  if (!row || editingId || event.key !== "Enter") return;
+  const id = row.dataset.id;
+  if (!id || event.target.matches("input, textarea, select, button, [contenteditable='true']")) return;
+  event.preventDefault();
+  selectedId = id;
+  renderStructure();
+  startInlineRename(id, true);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || editingId || !selectedId || !structureView?.classList.contains("is-current")) return;
+  const target = event.target;
+  if (target.matches("input, textarea, select, button, [contenteditable='true']")) return;
+  event.preventDefault();
+  startInlineRename(selectedId, true);
 });
 structureRows.addEventListener("pointerdown", (event) => {
   const handle = event.target.closest("[data-action='drag']");
@@ -2335,15 +2391,8 @@ blockOptions.forEach((button) => button.addEventListener("click", () => addLesso
 lessonBlocks.addEventListener("click", (event) => {
   const row = event.target.closest(".lesson-block");
   if (!row) return;
-  if (event.target.closest(".block-more")) {
-    row.classList.toggle("is-menu-open");
-    return;
-  }
   if (event.target.closest("[data-block-action='delete']")) {
-    const scrollTop = editorPage.scrollTop;
-    editorDraft.blocks = editorDraft.blocks.filter((block) => block.id !== row.dataset.blockId);
-    renderEditorBlocks();
-    requestAnimationFrame(() => { editorPage.scrollTop = scrollTop; });
+    openBlockDeleteDialog(row.dataset.blockId);
   }
 });
 lessonBlocks.addEventListener("pointerdown", (event) => {
