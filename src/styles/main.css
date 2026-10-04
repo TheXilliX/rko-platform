@@ -4161,3 +4161,61 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     display: none !important;
   }
 }
+
+/* Final responsive guardrails: keep the lesson readable until there is
+   enough horizontal space for a right-hand outline.  The outline stays
+   inside the reader at desktop widths and disappears before it can squeeze
+   or clip the lesson on laptops/tablets. */
+@media (min-width: 1021px) and (max-width: 1279px) {
+  .lesson-reader {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    width: min(100%, 900px);
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lesson-reader > .reader-back {
+    width: max-content;
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  .lesson-reader .reader-program {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1020px) {
+  .lesson-reader {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lesson-reader .reader-program {
+    display: none !important;
+  }
+}
+
