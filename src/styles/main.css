@@ -4219,3 +4219,13 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   }
 }
 
+/* Final mobile back-button guard: keep the control compact and left-aligned. */
+@media (max-width: 1020px) {
+  .lesson-reader > .reader-back {
+    width: max-content;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: auto;
+  }
+}
+\n
