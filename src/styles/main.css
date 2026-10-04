@@ -4110,3 +4110,54 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
 .reader-navigation {
   display: none !important;
 }
+
+
+/* Final non-clipping reader layout: centered lesson plus an in-bounds right outline. */
+@media (min-width: 1181px) {
+  .learning-shell {
+    overflow-x: hidden;
+  }
+
+  .lesson-reader {
+    display: block;
+    width: 100%;
+    max-width: 1320px;
+    overflow-x: hidden;
+  }
+
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    width: min(900px, calc(100% - 500px));
+    max-width: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lesson-reader > .reader-back {
+    width: max-content;
+    margin-left: max(0px, calc((100% - min(900px, calc(100% - 500px))) / 2));
+    margin-right: 0;
+  }
+
+  .lesson-reader .reader-program {
+    position: absolute;
+    top: 18px;
+    right: 0;
+    grid-column: auto;
+    grid-row: auto;
+    width: min(230px, calc(100% - 20px));
+    max-width: 280px;
+    min-width: 0;
+    margin: 0;
+    transform: none !important;
+    justify-self: auto;
+  }
+}
+
+@media (min-width: 1021px) and (max-width: 1180px) {
+  .lesson-reader .reader-program {
+    display: none !important;
+  }
+}
