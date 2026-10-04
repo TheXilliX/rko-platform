@@ -4076,3 +4076,37 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     transform: none !important;
   }
 }
+
+
+/* Final reader spacing and control cleanup. */
+@media (min-width: 1021px) {
+  .learning-shell {
+    overflow-x: visible;
+  }
+
+  .lesson-reader {
+    --reader-gap: clamp(24px, 3vw, 42px);
+    width: calc(100% + clamp(32px, 6vw, 96px));
+    max-width: none;
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, min(900px, calc(100% - 460px - var(--reader-gap) - var(--reader-gap))))
+      minmax(0, 1fr);
+    column-gap: var(--reader-gap);
+  }
+
+  .lesson-reader .reader-program {
+    transform: none !important;
+    width: 100%;
+    max-width: 280px;
+    min-width: 0;
+    margin-left: 0;
+    justify-self: end;
+  }
+}
+
+/* The lesson-level back button stays above the lesson; remove the duplicate
+   previous/next strip and its progress dot from below media content. */
+.reader-navigation {
+  display: none !important;
+}
