@@ -62,6 +62,7 @@ const exitConfirmSave = $("#exitConfirmSave");
 const editorPage = $("#editorPage");
 const editorLogoutButton = $("#editorLogoutButton");
 const editorRoleLabel = $("#editorRoleLabel");
+const editorServiceLabel = $("#editorServiceLabel");
 const editorBack = $("#editorBack");
 const editorPath = $("#editorPath");
 const lessonNameInput = $("#lessonNameInput");
@@ -156,6 +157,14 @@ const CALLOUT_COLORS = [
   { label: "СЕРЫЙ", value: "#71869B" },
   { label: "КРАСНЫЙ", value: "#B45D59" },
 ];
+const HEADING_COLORS = [
+  { label: "ПО УМОЛЧАНИЮ", value: "" },
+  { label: "ЗЕЛЁНЫЙ", value: "#2F7D57" },
+  { label: "ЯНТАРНЫЙ", value: "#FFAE42" },
+  { label: "СИНИЙ", value: "#5C7EA6" },
+  { label: "СЕРЫЙ", value: "#71869B" },
+  { label: "КРАСНЫЙ", value: "#B45D59" },
+];
 const normalizeCalloutVariant = (variant) => CALLOUT_META[variant] ? variant : "important";
 const normalizeCalloutIcon = (icon, variant = "important") => CALLOUT_ICONS.includes(icon) ? icon : CALLOUT_META[variant]?.icon || "!";
 const normalizeCalloutColor = (color) => {
@@ -172,6 +181,19 @@ function normalizeCalloutBlock(block) {
   block.html ??= "";
   return block;
 }
+function normalizeHeadingColor(color) {
+  const value = String(color || "").toUpperCase();
+  return HEADING_COLORS.some((item) => item.value === value) ? value : "";
+}
+
+function normalizeHeadingBlock(block) {
+  block.level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(block.level) ? block.level : "h2";
+  block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
+  block.color = normalizeHeadingColor(block.color);
+  block.text ??= "";
+  return block;
+}
+
 const API_BASE = "/api";
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
@@ -416,11 +438,7 @@ function normalizeStructure(items) {
       if (!Array.isArray(item.blocks)) item.blocks = [];
       item.allowDownloads ??= false;
       item.blocks.forEach((block) => {
-        if (block.type === "heading") {
-          block.level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(block.level) ? block.level : "h2";
-          block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
-          block.text ??= "";
-        }
+        if (block.type === "heading") normalizeHeadingBlock(block);
         if (block.type === "callout") normalizeCalloutBlock(block);
       });
     }
@@ -1868,9 +1886,10 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
     const element = document.createElement("section");
     element.className = "reader-block reader-block--" + block.type;
     if (block.type === "heading") {
+      normalizeHeadingBlock(block);
       const heading = document.createElement(block.level || "h2");
-      const headingAlign = ["left", "center", "right"].includes(block.align) ? block.align : "left";
-      element.classList.add("reader-heading--" + headingAlign);
+      element.classList.add("reader-heading--" + block.align);
+      if (block.color) heading.style.color = block.color;
       heading.textContent = block.text || "";
       element.appendChild(heading);
     } else if (block.type === "text") {
@@ -2077,12 +2096,15 @@ function openLessonEditor(id) {
   editorDraft = clone(found.item);
   editorDraft.blocks ??= [];
   editorDraft.blocks.forEach((block) => {
+    if (block.type === "heading") normalizeHeadingBlock(block);
     if (block.type === "callout") normalizeCalloutBlock(block);
   });
   editorDraft.allowDownloads ??= false;
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
   editorPath.textContent = path.map((item) => item.title).join("  /  ");
+  const editorRole = isOwnerAccount(currentAccount) ? "ВЛАДЕЛЕЦ" : currentAccount?.role === "admin" ? "АДМИН" : "УЧЕНИК";
+  if (editorServiceLabel) editorServiceLabel.textContent = "[ RKO / " + editorRole + " ]";
   editorRoleLabel.textContent = "АДМИН";
   lessonNameInput.value = editorDraft.title;
   allowDownloads.checked = editorDraft.allowDownloads;
@@ -2162,8 +2184,7 @@ function renderEditorBlocks() {
 }
 
 function renderHeadingBlock(container, block) {
-  block.level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(block.level) ? block.level : "h2";
-  block.align = ["left", "center", "right"].includes(block.align) ? block.align : "left";
+  normalizeHeadingBlock(block);
   const fields = document.createElement("div");
   fields.className = "heading-fields";
   const select = document.createElement("select");
@@ -2218,7 +2239,36 @@ function renderHeadingBlock(container, block) {
     alignToolbar.appendChild(button);
   });
   syncAlignment();
-  container.append(fields, alignToolbar);
+
+  const colorToolbar = document.createElement("div");
+  colorToolbar.className = "heading-color-toolbar";
+  colorToolbar.setAttribute("aria-label", "Цвет заголовка");
+  const syncColor = () => {
+    colorToolbar.querySelectorAll("[data-heading-color]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.headingColor === block.color);
+      button.setAttribute("aria-pressed", String(button.dataset.headingColor === block.color));
+    });
+  };
+  HEADING_COLORS.forEach(({ label, value }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "heading-color-button" + (value ? "" : " is-default");
+    button.dataset.headingColor = value;
+    button.title = label;
+    button.setAttribute("aria-label", "Цвет заголовка: " + label);
+    const swatch = document.createElement("i");
+    swatch.setAttribute("aria-hidden", "true");
+    if (value) swatch.style.background = value;
+    button.appendChild(swatch);
+    button.addEventListener("click", () => {
+      block.color = value;
+      syncColor();
+      updateEditorState();
+    });
+    colorToolbar.appendChild(button);
+  });
+  syncColor();
+  container.append(fields, alignToolbar, colorToolbar);
 }
 
 function buildRichTextToolbar(toolbar, area, block) {
@@ -2427,7 +2477,7 @@ function closeBlockPicker() {
 
 function addLessonBlock(type) {
   const block = { id: uid("block"), type };
-  if (type === "heading") Object.assign(block, { level: "h1", align: "left", text: "" });
+  if (type === "heading") Object.assign(block, { level: "h1", align: "left", color: "", text: "" });
   if (type === "text" || type === "callout") block.html = "";
   if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!", color: CALLOUT_DEFAULT_COLOR });
   editorDraft.blocks.push(block);
