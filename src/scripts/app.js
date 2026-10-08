@@ -2125,7 +2125,7 @@ async function clearLocalAssetStorage() {
 
 function lessonSequence(lessonId) {
   const found = findNode(savedStructure, lessonId);
-  if (!found || found.item.type !== "lesson" || found.parent?.type !== "module") return [found?.item].filter(Boolean);
+  if (!found || found.item.type !== "lesson" || !["module", "section"].includes(found.parent?.type)) return [found?.item].filter(Boolean);
   return found.parent.children.filter((item) => item.type === "lesson" && isEffectivelyVisible(item.id));
 }
 
@@ -2142,11 +2142,12 @@ function visibleModules() {
 
 function neighboringLesson(lessonId, direction) {
   const found = findNode(savedStructure, lessonId);
-  if (!found || found.item.type !== "lesson" || found.parent?.type !== "module") return null;
+  if (!found || found.item.type !== "lesson" || !["module", "section"].includes(found.parent?.type)) return null;
   const currentLessons = lessonSequence(lessonId);
   const currentIndex = currentLessons.findIndex((item) => item.id === lessonId);
   const nearby = currentLessons[currentIndex + direction];
   if (nearby) return nearby;
+  if (found.parent.type === "section") return null;
   const modules = visibleModules();
   const moduleIndex = modules.findIndex((item) => item.id === found.parent.id);
   const nextModule = modules[moduleIndex + direction];
@@ -2198,11 +2199,12 @@ function renderLessonNavigation(lesson) {
   const isCompleted = lessonProgressState[lesson.id] === "completed";
   const previousIncomplete = lessons.slice(0, currentIndex).some((item) => lessonProgressState[item.id] !== "completed");
   const isLastModule = isLastModuleInSection(currentLocation.module);
+  const isDirectSectionLesson = findNode(savedStructure, lesson.id)?.parent?.type === "section";
   if (!isLast) nextLesson.textContent = "ДАЛЕЕ →";
   else if (previousIncomplete) nextLesson.textContent = "ПРОЙДИТЕ ПРЕДЫДУЩИЕ УРОКИ";
   else if (isCompleted && next) nextLesson.textContent = nextLocation?.section?.id !== currentLocation.section?.id ? "СЛЕДУЮЩИЙ РАЗДЕЛ →" : "СЛЕДУЮЩИЙ МОДУЛЬ →";
-  else if (isCompleted) nextLesson.textContent = isLastModule ? "РАЗДЕЛ ЗАВЕРШЁН" : "МОДУЛЬ ЗАВЕРШЁН";
-  else nextLesson.textContent = isLastModule ? "ЗАВЕРШИТЬ РАЗДЕЛ" : "ЗАВЕРШИТЬ МОДУЛЬ";
+  else if (isCompleted) nextLesson.textContent = isDirectSectionLesson || isLastModule ? "РАЗДЕЛ ЗАВЕРШЁН" : "МОДУЛЬ ЗАВЕРШЁН";
+  else nextLesson.textContent = isDirectSectionLesson || isLastModule ? "ЗАВЕРШИТЬ РАЗДЕЛ" : "ЗАВЕРШИТЬ МОДУЛЬ";
   nextLesson.disabled = isLast && (previousIncomplete || (isCompleted && !next));
   lessonProgress.innerHTML = "";
   lessons.forEach((item) => {
