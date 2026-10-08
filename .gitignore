@@ -3,3 +3,6 @@ dist/
 .DS_Store
 node_modules/
 *.tar.gz
+.env
+.env.*
+!.env.example

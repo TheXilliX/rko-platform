@@ -6,5 +6,6 @@ vlad2hard.ru, www.vlad2hard.ru {
   }
 
   root * /srv
+  try_files {path} /index.html
   file_server
 }

@@ -54,6 +54,7 @@
           </p>
         </div>
       </form>
+      <button class="documents-button" id="documentsButton" type="button">ДОКУМЕНТЫ</button>
     </section>
 
     <section class="page welcome-page" id="welcomePage" aria-live="polite">
@@ -78,7 +79,11 @@
 
       <div class="workspace" id="workspace">
         <main class="workspace-panel learning-shell is-current" id="learningPanel">
-          <h1 class="display-title" id="learningTitle"><span class="display-initial">О</span>БУЧЕНИЕ</h1>
+          <h1 class="display-title" id="learningTitle"><span class="display-initial">Р</span>КО Влад 2Hard</h1>
+          <div class="learning-actions" id="learningActions">
+            <button class="learning-pill" id="offersButton" type="button">ОФФЕРЫ</button>
+            <button class="learning-pill learning-pill--accent" id="clubButton" type="button">КЛУБ</button>
+          </div>
 
           <div class="course-browser" id="courseBrowser">
             <div class="course-guide">
@@ -152,7 +157,7 @@
                   <p class="settings-card-label">УПРАВЛЕНИЕ ДОСТУПОМ</p>
                   <h2>АККАУНТЫ</h2>
                 </div>
-                <button class="add-button" id="createAccountButton" type="button">+ СОЗДАТЬ АККАУНТ</button>
+                <div class="accounts-heading-actions"><button class="text-action" id="archiveButton" type="button">АРХИВ</button><button class="add-button" id="createAccountButton" type="button">+ СОЗДАТЬ АККАУНТ</button></div>
               </div>
               <div class="accounts-list" id="accountsList"></div>
             </section>
@@ -188,6 +193,23 @@
                     <label><span>ДОПОЛНИТЕЛЬНЫЙ</span><input id="secondaryColor" type="color" value="#2F7D57"></label>
                   </div>
                   <button class="text-action" id="resetColors" type="button">ВЕРНУТЬ ЦВЕТА</button>
+                </section>
+                <section class="settings-card settings-card--club">
+                  <p class="settings-card-label">КЛУБ</p>
+                  <h3>КЛУБ ВЛАД 2HARD</h3>
+                  <label><span>НАЗВАНИЕ</span><input id="clubTitleSetting" type="text"></label>
+                  <label><span>ОПИСАНИЕ</span><textarea id="clubDescriptionSetting" rows="4"></textarea></label>
+                  <label><span>ЛИЧНЫЙ TELEGRAM</span><input id="clubTelegramSetting" type="url"></label>
+                  <label><span>ТЕКСТ КНОПКИ</span><input id="clubButtonTextSetting" type="text"></label>
+                  <label><span>ССЫЛКА НА ЧАТ</span><input id="clubChatSetting" type="url"></label>
+                  <button class="save-button is-enabled" id="saveClubSettings" type="button">СОХРАНИТЬ</button>
+                </section>
+                <section class="settings-card">
+                  <p class="settings-card-label">ДОСТУП ПРИ БЛОКИРОВКЕ КУРСА</p>
+                  <h3>ДОПОЛНИТЕЛЬНЫЕ СТРАНИЦЫ</h3>
+                  <p>Отдельно разреши открывать Офферы и Клуб ученику с закрытым доступом к основному курсу.</p>
+                  <button class="setting-switch is-on" id="offersBlockedAccess" type="button" aria-pressed="true"><span class="setting-switch-label">ОФФЕРЫ ДОСТУПНЫ</span><span class="setting-switch-track"><i></i></span></button>
+                  <button class="setting-switch is-on" id="clubBlockedAccess" type="button" aria-pressed="true"><span class="setting-switch-label">КЛУБ ДОСТУПЕН</span><span class="setting-switch-track"><i></i></span></button>
                 </section>
               </div>
             </section>
@@ -332,6 +354,11 @@
               <input id="allowDownloads" type="checkbox">
               <span class="switch" aria-hidden="true"></span>
             </label>
+            <label class="editor-setting editor-toggle-setting">
+              <span>ДОСТУПНО ПРИ ЗАКРЫТОМ ДОСТУПЕ К КУРСУ</span>
+              <input id="allowWhenBlocked" type="checkbox">
+              <span class="switch" aria-hidden="true"></span>
+            </label>
             <div class="editor-actions">
               <button class="editor-delete" id="deleteLesson" type="button">УДАЛИТЬ</button>
               <button class="editor-save" id="saveLesson" type="button">СОХРАНИТЬ</button>
@@ -372,6 +399,7 @@
         <h2 id="blockPickerTitle">ЧТО ДОБАВИТЬ?</h2>
         <div class="block-options">
           <button type="button" data-block-type="heading">ЗАГОЛОВОК</button>
+          <button type="button" data-block-type="accordion">РАСКРЫВАЮЩИЙСЯ ЗАГОЛОВОК</button>
           <button type="button" data-block-type="text">ТЕКСТ</button>
           <button type="button" data-block-type="callout">АКЦЕНТНЫЙ БЛОК</button>
           <button type="button" data-block-type="divider">РАЗДЕЛИТЕЛЬ</button>
@@ -402,7 +430,7 @@
         <p class="account-form-note" id="accountFormNote" hidden></p>
         <div class="account-modal-actions">
           <button class="account-cancel" id="accountCancel" type="button">ОТМЕНИТЬ</button>
-          <button class="account-delete" id="accountDelete" type="button" hidden>УДАЛИТЬ АККАУНТ</button>
+          <button class="account-delete" id="accountDelete" type="button" hidden>В АРХИВ</button>
           <button class="account-submit" id="accountSubmit" type="submit">СОХРАНИТЬ</button>
         </div>
       </form>
@@ -438,6 +466,51 @@
           <button class="account-submit" type="submit">СОХРАНИТЬ ПАРОЛЬ</button>
         </div>
       </form>
+    </div>
+
+    <div class="legal-layer" id="documentsLayer" aria-hidden="true">
+      <section class="legal-menu" role="dialog" aria-modal="true" aria-labelledby="documentsTitle">
+        <button class="legal-close" data-close-documents type="button" aria-label="Закрыть">×</button>
+        <p class="legal-kicker">VLAD 2HARD RKO</p><h2 id="documentsTitle">ДОКУМЕНТЫ</h2>
+        <div class="legal-links">
+          <a href="./public/legal/policy.html">Политика обработки персональных данных <span>→</span></a>
+          <a href="./public/legal/personal-data-consent.html">Согласие на обработку персональных данных <span>→</span></a>
+          <a href="./public/legal/user-agreement.html">Пользовательское соглашение и правила доступа <span>→</span></a>
+        </div>
+      </section>
+    </div>
+
+    <div class="legal-layer consent-layer" id="consentLayer" aria-hidden="true">
+      <section class="consent-card" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+        <p class="legal-kicker">ВЕРСИЯ 1.0 · 08 ОКТЯБРЯ 2026</p>
+        <h2 id="consentTitle">ПЕРЕД НАЧАЛОМ РАБОТЫ</h2>
+        <p>Для использования платформы необходимо ознакомиться с правилами проекта и документами об обработке персональных данных.</p>
+        <label class="consent-check"><input id="consentPersonalData" type="checkbox"><span>Я даю согласие на обработку персональных данных<small><a href="./public/legal/personal-data-consent.html" target="_blank">Открыть согласие</a> · <a href="./public/legal/policy.html" target="_blank">Открыть политику</a></small></span></label>
+        <label class="consent-check"><input id="consentAgreement" type="checkbox"><span>Я ознакомился и принимаю пользовательское соглашение и правила доступа<small><a href="./public/legal/user-agreement.html" target="_blank">Открыть соглашение</a></small></span></label>
+        <label class="consent-check"><input id="consentAge" type="checkbox"><span>Я подтверждаю, что мне исполнилось 18 лет</span></label>
+        <button class="consent-submit" id="consentSubmit" type="button" disabled>ПРОДОЛЖИТЬ</button>
+        <p class="consent-error" id="consentError" role="alert"></p>
+      </section>
+    </div>
+
+    <section class="page offers-page" id="offersPage" aria-label="Офферы">
+      <header class="topbar"><p class="service-label">[ RKO / ОФФЕРЫ ]</p><button class="nav-action" id="offersEdit" type="button">✎ РЕДАКТИРОВАТЬ</button></header>
+      <main class="offers-workspace"><button class="reader-back is-visible" id="offersBack" type="button">← НАЗАД</button><p class="offers-updated" id="offersUpdated"></p><h1>ОФФЕРЫ</h1><div id="offersContent" class="offers-content"></div></main>
+    </section>
+
+    <div class="legal-layer club-layer" id="clubLayer" aria-hidden="true">
+      <section class="club-card" role="dialog" aria-modal="true" aria-labelledby="clubTitle">
+        <button class="legal-close" id="clubClose" type="button" aria-label="Закрыть">×</button><p class="legal-kicker">ЗАКРЫТОЕ СООБЩЕСТВО</p>
+        <h2 id="clubTitle">КЛУБ ВЛАД 2HARD</h2><p id="clubDescription"></p><a id="clubTelegram" target="_blank" rel="noreferrer"></a><a class="club-chat" id="clubChat" target="_blank" rel="noreferrer">ЗАКРЫТЫЙ ЧАТ</a>
+      </section>
+    </div>
+
+    <div class="legal-layer archive-layer" id="archiveLayer" aria-hidden="true">
+      <section class="legal-menu archive-menu" role="dialog" aria-modal="true"><button class="legal-close" id="archiveClose" type="button">×</button><p class="legal-kicker">УДАЛЁННЫЕ АККАУНТЫ</p><h2>АРХИВ</h2><div id="archiveList" class="archive-list"></div></section>
+    </div>
+
+    <div class="legal-layer" id="consentsAdminLayer" aria-hidden="true">
+      <section class="legal-menu consents-admin-menu" role="dialog" aria-modal="true"><button class="legal-close" id="consentsAdminClose" type="button">×</button><p class="legal-kicker">ЮРИДИЧЕСКИЕ ДАННЫЕ</p><h2>СОГЛАСИЯ</h2><div id="consentsAdminList"></div></section>
     </div>
   </div>
 

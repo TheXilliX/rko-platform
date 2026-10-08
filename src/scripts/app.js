@@ -1,5 +1,3 @@
-import { accounts } from "../data/accounts.js";
-
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const splash = $("#splash");
@@ -60,6 +58,7 @@ const exitConfirmCancel = $("#exitConfirmCancel");
 const exitConfirmDiscard = $("#exitConfirmDiscard");
 const exitConfirmSave = $("#exitConfirmSave");
 const editorPage = $("#editorPage");
+const offersPage = $("#offersPage");
 const editorLogoutButton = $("#editorLogoutButton");
 const editorRoleLabel = $("#editorRoleLabel");
 const editorServiceLabel = $("#editorServiceLabel");
@@ -88,6 +87,7 @@ const resetColors = $("#resetColors");
 const structureView = $('[data-admin-view="structure"]');
 const createAccountButton = $("#createAccountButton");
 const addLessonButton = $("#addLessonButton");
+const allowWhenBlocked = $("#allowWhenBlocked");
 const accountsList = $("#accountsList");
 const accountLayer = $("#accountLayer");
 const accountForm = $("#accountForm");
@@ -131,10 +131,29 @@ const STORAGE_KEY = "rko-course-structure-v1";
 const COLLAPSED_STORAGE_KEY = "rko-course-collapsed-v1";
 const SETTINGS_KEY = "rko-platform-settings-v1";
 const PROGRESS_KEY = "rko-lesson-progress-v1";
-const ACCOUNT_STORAGE_KEY = "rko-platform-accounts-v1";
-const SESSION_KEY = "rko-platform-session-v1";
 const READER_PROGRAM_COLLAPSED_KEY = "rko-reader-program-state-v2";
-const DEFAULT_SETTINGS = { newItemsVisible: false, newItemsAllowDownloads: true, primaryColor: "#FFAE42", secondaryColor: "#2F7D57" };
+const DEFAULT_SETTINGS = {
+  newItemsVisible: false,
+  newItemsAllowDownloads: true,
+  primaryColor: "#FFAE42",
+  secondaryColor: "#2F7D57",
+  club: {
+    title: "Клуб Влад 2Hard",
+    description: "Закрытое пространство для участников курса: общение, поддержка, разборы и рабочие обновления без лишнего шума.",
+    telegram: "https://t.me/Vlad_2Hard",
+    buttonText: "Закрытый чат",
+    chatUrl: "https://t.me/+je1JF-48PyU3NzYy",
+  },
+  offers: [
+    { id: "offers-rko", title: "РКО", content: "Актуальные предложения по расчётным счетам будут опубликованы здесь." },
+    { id: "offers-debit", title: "Дебетовки", content: "Актуальные предложения по дебетовым картам будут опубликованы здесь." },
+    { id: "offers-credit", title: "Кредитки", content: "Актуальные предложения по кредитным картам будут опубликованы здесь." },
+    { id: "offers-mfo", title: "МФО", content: "Актуальные предложения МФО будут опубликованы здесь." },
+  ],
+  offersUpdatedAt: "2026-10-08",
+  offersAllowWhenBlocked: true,
+  clubAllowWhenBlocked: true,
+};
 const HIGHLIGHT_COLORS = [
   { name: "МЯГКИЙ ЗЕЛЁНЫЙ", value: "#DDEBDD" },
   { name: "ЯНТАРНЫЙ", value: "#F6E0B8" },
@@ -239,7 +258,9 @@ let lessonProgressState = {};
 let readerProgramCollapsed = new Set();
 let readerMediaUrls = [];
 let readerRenderToken = 0;
-let accountStore = loadAccounts();
+let accountStore = [];
+let pendingAuthenticatedAccount = null;
+let pendingConsentState = null;
 let accountModalMode = "profile";
 let editingAccountLogin = null;
 let pendingAccountLogin = null;
@@ -282,24 +303,19 @@ function normalizeAccount(account) {
 }
 
 function loadAccounts() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(ACCOUNT_STORAGE_KEY));
-    if (Array.isArray(stored) && stored.length) return normalizeAccounts(stored);
-  } catch {}
-  return normalizeAccounts(accounts);
+  return [];
 }
 
 function normalizeAccounts(list) {
   const normalized = list.map(normalizeAccount);
   const owner = normalized.find((account) => isOwnerAccount(account))
-    || normalized.find((account) => account.login === "admin" && account.role === "admin")
     || normalized.find((account) => account.role === "admin");
   if (owner) owner.role = "owner";
   return normalized;
 }
 
 function saveAccounts() {
-  localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(accountStore));
+  // Accounts are server-owned. Never persist credentials or account records in the browser.
 }
 
 async function syncCourseToServer() {
@@ -366,15 +382,6 @@ function loadLessonProgress(account = currentAccount) {
     const key = progressStorageKey(account);
     const stored = localStorage.getItem(key);
     if (stored) return JSON.parse(stored) || {};
-    if (account?.login === "student") {
-      const legacy = localStorage.getItem(PROGRESS_KEY);
-      if (legacy) {
-        const migrated = JSON.parse(legacy) || {};
-        localStorage.setItem(key, JSON.stringify(migrated));
-        localStorage.removeItem(PROGRESS_KEY);
-        return migrated;
-      }
-    }
     return {};
   } catch { return {}; }
 }
@@ -404,6 +411,13 @@ function applyPlatformSettings() {
     defaultDownloads.setAttribute("aria-pressed", String(platformSettings.newItemsAllowDownloads));
     defaultDownloads.querySelector(".setting-switch-label").textContent = platformSettings.newItemsAllowDownloads ? "РАЗРЕШЕНО" : "ЗАПРЕЩЕНО";
   }
+  [["#offersBlockedAccess", "offersAllowWhenBlocked", "ОФФЕРЫ"], ["#clubBlockedAccess", "clubAllowWhenBlocked", "КЛУБ"]].forEach(([selector, key, label]) => {
+    const button = $(selector); if (!button) return;
+    const open = platformSettings[key] !== false;
+    button.classList.toggle("is-on", open); button.setAttribute("aria-pressed", String(open));
+    button.querySelector(".setting-switch-label").textContent = `${label} ${open ? "ДОСТУПЕН" : "ЗАКРЫТ"}`;
+  });
+  if ($("#clubTitleSetting")) fillClubSettingsForm();
 }
 
 function loadSavedStructure() {
@@ -437,9 +451,14 @@ function normalizeStructure(items) {
     if (item.type === "lesson") {
       if (!Array.isArray(item.blocks)) item.blocks = [];
       item.allowDownloads ??= false;
+      item.allowWhenBlocked ??= false;
       item.blocks.forEach((block) => {
         if (block.type === "heading") normalizeHeadingBlock(block);
         if (block.type === "callout") normalizeCalloutBlock(block);
+        if (block.type === "accordion") {
+          block.title ??= "Раскрывающийся заголовок";
+          block.html ??= "";
+        }
       });
     }
     if (item.children) normalizeStructure(item.children);
@@ -583,7 +602,7 @@ function closeConiferCult() {
 }
 
 function setPage(activePage) {
-  [authPage, welcomePage, dashboardPage, editorPage].forEach((page) => page.classList.toggle("is-active", page === activePage));
+  [authPage, welcomePage, dashboardPage, editorPage, offersPage].forEach((page) => page.classList.toggle("is-active", page === activePage));
 }
 
 function showAuth({ skipIntro = false } = {}) {
@@ -629,7 +648,28 @@ function triggerError() {
   }, 1200);
 }
 
-function showWelcome(account) {
+function openConsentLayer() {
+  const layer = $("#consentLayer");
+  ["#consentPersonalData", "#consentAgreement", "#consentAge"].forEach((selector) => { const input = $(selector); if (input) input.checked = false; });
+  $("#consentSubmit").disabled = true;
+  $("#consentError").textContent = "";
+  layer.classList.add("is-visible");
+  layer.setAttribute("aria-hidden", "false");
+}
+
+function closeConsentLayer() {
+  const layer = $("#consentLayer");
+  layer.classList.remove("is-visible");
+  layer.setAttribute("aria-hidden", "true");
+}
+
+function showWelcome(account, consent = null) {
+  if (consent?.required) {
+    pendingAuthenticatedAccount = account;
+    pendingConsentState = consent;
+    openConsentLayer();
+    return;
+  }
   authForm.classList.remove("is-ready");
   authForm.classList.add("is-authenticated");
   authStatus.textContent = "УСПЕШНО";
@@ -665,7 +705,6 @@ function showDashboard(account) {
   currentAccount = account;
   collapsedIds = loadCollapsedIds(account);
   readerProgramCollapsed = loadReaderProgramCollapsed(account);
-  localStorage.setItem(SESSION_KEY, account.login);
   lessonProgressState = loadLessonProgress(account);
   dashboardIsSwitching = false;
   const isStaff = isStaffAccount(account);
@@ -684,6 +723,14 @@ function showDashboard(account) {
   renderStructure();
   setPage(dashboardPage);
   syncConiferAvailability();
+  const lessonMatch = location.pathname.match(/^\/lesson\/([^/]+)$/);
+  if (location.pathname === "/offers") {
+    window.setTimeout(openOffers, 0);
+  } else if (lessonMatch) {
+    const found = findNode(savedStructure, decodeURIComponent(lessonMatch[1]));
+    if (found?.item?.type === "lesson") window.setTimeout(() => openLessonReader(found.item, { historyMode: "replace" }), 0);
+    else showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
+  }
 }
 
 function logoutFrom(button) {
@@ -696,7 +743,6 @@ function logoutFrom(button) {
       button.classList.remove("is-pressed");
       activePage.classList.remove("is-leaving");
       currentAccount = null;
-      localStorage.removeItem(SESSION_KEY);
       fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
       lessonProgressState = {};
       readerProgramCollapsed = new Set();
@@ -823,7 +869,7 @@ function updateActionState() {
   structureDirtyIndicator?.classList.toggle("is-visible", changed);
   structureView?.classList.toggle("has-unsaved", changed);
   const selected = selectedId ? findNode(draftStructure, selectedId)?.item : null;
-  const canAddLesson = Boolean(selected && (selected.type === "section" || selected.type === "module"));
+  const canAddLesson = Boolean(selected && (selected.type === "section" || selected.type === "module" || selected.type === "lesson"));
   addLessonButton.disabled = !canAddLesson;
   addLessonButton.setAttribute("aria-disabled", String(!canAddLesson));
 }
@@ -865,14 +911,20 @@ function addItem() {
 
 function addLesson() {
   const target = selectedId ? findNode(draftStructure, selectedId) : null;
-  if (!target || !["section", "module"].includes(target.item.type)) {
-    showNotice("СНАЧАЛА ВЫБЕРИ РАЗДЕЛ ИЛИ МОДУЛЬ", "error");
+  if (!target || !["section", "module", "lesson"].includes(target.item.type)) {
+    showNotice("СНАЧАЛА ВЫБЕРИ РАЗДЕЛ, МОДУЛЬ ИЛИ УРОК", "error");
     return;
   }
   const newItem = { id: uid("lesson"), type: "lesson", title: "Новый урок", visible: platformSettings.newItemsVisible, allowDownloads: platformSettings.newItemsAllowDownloads, blocks: [] };
-  target.item.children ??= [];
-  target.item.children.push(newItem);
-  collapsedIds.delete(target.item.id);
+  if (target.item.type === "lesson") {
+    const index = target.siblings.findIndex((item) => item.id === target.item.id);
+    target.siblings.splice(index + 1, 0, newItem);
+    if (target.parent) collapsedIds.delete(target.parent.id);
+  } else {
+    target.item.children ??= [];
+    target.item.children.push(newItem);
+    collapsedIds.delete(target.item.id);
+  }
   saveCollapsedIds();
   selectedId = newItem.id;
   statusTransitionId = newItem.id;
@@ -1095,9 +1147,9 @@ function openAccountDeleteDialog(account) {
   pendingAccountLogin = account.login;
   pendingDeleteContext = "account";
   pendingConfirmAction = null;
-  confirmCopy.textContent = `Удалить аккаунт «${accountDisplayName(account)}»?`;
-  confirmKicker.textContent = "УДАЛЕНИЕ";
-  confirmTitle.textContent = "УДАЛИТЬ АККАУНТ?";
+  confirmCopy.textContent = `Переместить аккаунт «${accountDisplayName(account)}» в архив? Вход будет сразу заблокирован.`;
+  confirmKicker.textContent = "АРХИВ";
+  confirmTitle.textContent = "ПЕРЕМЕСТИТЬ В АРХИВ?";
   confirmLayer.classList.add("is-visible");
   confirmLayer.setAttribute("aria-hidden", "false");
   window.setTimeout(() => confirmNo.focus(), 100);
@@ -1134,7 +1186,7 @@ async function deletePending() {
       renderAccounts();
       closeDeleteDialog();
       closeAccountModal();
-      showNotice("АККАУНТ УДАЛЁН", "success");
+      showNotice("АККАУНТ ПЕРЕМЕЩЁН В АРХИВ", "success");
     } else closeDeleteDialog();
     return;
   }
@@ -1257,14 +1309,15 @@ function renderAccounts() {
   ordered.forEach((account) => {
     const row = document.createElement("article");
     row.className = `account-card${isOwnerAccount(account) ? " account-card--owner" : account.role === "admin" ? " account-card--admin" : ""}`;
-    row.innerHTML = `<div class="account-card-main"><span class="account-card-type"></span><h3 class="account-card-name"></h3></div><div class="account-card-meta"><span class="account-card-telegram"></span><span class="account-card-status"></span><button class="account-card-action" type="button">НАСТРОЙКИ</button></div>`;
+    row.innerHTML = `<div class="account-card-main"><span class="account-card-type"></span><h3 class="account-card-name"></h3></div><div class="account-card-meta"><span class="account-card-telegram"></span><span class="account-card-status"></span><button class="account-consents-action" type="button">СОГЛАСИЯ</button><button class="account-card-action" type="button">НАСТРОЙКИ</button></div>`;
     row.querySelector(".account-card-type").textContent = isOwnerAccount(account) ? "ВЛАДЕЛЕЦ" : account.role === "admin" ? "АДМИНИСТРАТОР" : "УЧЕНИК";
     row.querySelector(".account-card-name").textContent = accountDisplayName(account);
-    row.querySelector(".account-card-telegram").textContent = account.telegram ? `TELEGRAM / ${account.telegram}` : "TELEGRAM";
+    row.querySelector(".account-card-telegram").textContent = account.telegram || "TELEGRAM";
     const status = row.querySelector(".account-card-status");
     status.textContent = isStaffAccount(account) || account.courseAccess !== false ? "ДОСТУП ОТКРЫТ" : "ДОСТУП ЗАКРЫТ";
     status.classList.toggle("is-blocked", !isStaffAccount(account) && account.courseAccess === false);
     row.querySelector(".account-card-action").addEventListener("click", () => openAccountModal("profile", account));
+    row.querySelector(".account-consents-action").addEventListener("click", () => openConsentsFor(account));
     accountsList.appendChild(row);
   });
 }
@@ -1296,9 +1349,7 @@ function openAccountModal(mode, account = null) {
   accountLastName.value = account?.lastName || "";
   accountTelegram.value = account?.telegram || "";
   accountLogin.value = account?.login || "";
-  accountPassword.value = !isCreate && isStaffAccount(currentAccount) && account && !sameAccount(account, currentAccount)
-    ? (account.password || "")
-    : "";
+  accountPassword.value = "";
   accountPasswordChange.hidden = isCreate;
   accountRole.value = account?.role || "student";
   accountRole.closest("label").hidden = !isCreate && account === currentAccount && !isStaffAccount(account);
@@ -1512,7 +1563,6 @@ async function submitAccountForm(event) {
   account.telegram = telegram;
   if (!isOwnStudent) {
     account.login = login;
-    if (password) account.password = password;
   }
   if (!accountRole.disabled) {
     const nextRole = accountRole.value;
@@ -1551,7 +1601,6 @@ async function submitAccountForm(event) {
     const previousProgress = localStorage.getItem(previousProgressKey);
     if (previousProgress) localStorage.setItem(nextProgressKey, previousProgress);
     localStorage.removeItem(previousProgressKey);
-    localStorage.setItem(SESSION_KEY, login);
   }
   saveAccounts();
   if (sameAccount(currentAccount, account)) {
@@ -1631,8 +1680,8 @@ function lessonProgressFor(item) {
   return completed === lessons.length ? "completed" : started ? "visited" : "new";
 }
 
-function setLearningTitle(title = "ОБУЧЕНИЕ") {
-  const value = String(title || "ОБУЧЕНИЕ").trim() || "ОБУЧЕНИЕ";
+function setLearningTitle(title = "РКО Влад 2Hard") {
+  const value = String(title || "РКО Влад 2Hard").trim() || "РКО Влад 2Hard";
   learningTitle.replaceChildren();
   const initial = document.createElement("span");
   initial.className = "display-initial";
@@ -1640,8 +1689,8 @@ function setLearningTitle(title = "ОБУЧЕНИЕ") {
   learningTitle.append(initial, document.createTextNode(value.slice(1)));
 }
 
-function transitionLearningTitle(title = "ОБУЧЕНИЕ") {
-  const value = String(title || "ОБУЧЕНИЕ").trim() || "ОБУЧЕНИЕ";
+function transitionLearningTitle(title = "РКО Влад 2Hard") {
+  const value = String(title || "РКО Влад 2Hard").trim() || "РКО Влад 2Hard";
   if (learningTitle.dataset.title === value) return;
   window.clearTimeout(titleTransitionTimer);
   learningTitle.dataset.title = value;
@@ -1660,22 +1709,25 @@ function renderCourse() {
   readerRenderToken += 1;
   clearReaderMediaUrls();
   learningTitle.classList.remove("is-reader-hidden");
-  const currentPlace = coursePath.length ? findNode(savedStructure, coursePath.at(-1))?.item.title : "ОБУЧЕНИЕ";
+  $("#learningActions")?.classList.toggle("is-hidden", coursePath.length > 0);
+  const currentPlace = coursePath.length ? findNode(savedStructure, coursePath.at(-1))?.item.title : "РКО Влад 2Hard";
   transitionLearningTitle(currentPlace);
   courseList.classList.add("is-changing");
   window.setTimeout(() => {
     const items = courseItemsAtPath();
     courseList.innerHTML = "";
-    const courseBlocked = !isStaffAccount(currentAccount) && currentAccount?.courseAccess === false;
+    const courseBlocked = currentAccount?.courseAccess === false;
     courseInstruction.textContent = courseBlocked && coursePath.length > 0
       ? "ДОСТУП К МАТЕРИАЛАМ ОГРАНИЧЕН АДМИНИСТРАТОРОМ."
       : coursePath.length === 0 ? "ВЫБЕРИ РАЗДЕЛ, ЧТОБЫ ПЕРЕЙТИ К МОДУЛЯМ КУРСА." : coursePath.length === 1 ? "ВЫБЕРИ МОДУЛЬ, ЧТОБЫ ПЕРЕЙТИ К УРОКАМ И МАТЕРИАЛАМ КУРСА." : "ВЫБЕРИ УРОК, ЧТОБЫ ПЕРЕЙТИ К МАТЕРИАЛАМ.";
     courseGuideBack.classList.toggle("is-visible", coursePath.length > 0);
     items.forEach((item, index) => {
-      const accessible = isEffectivelyVisible(item.id) && (!courseBlocked || item.type === "section");
+      const structurallyVisible = isEffectivelyVisible(item.id);
+      const accessible = item.type !== "lesson" || (structurallyVisible && (!courseBlocked || item.allowWhenBlocked === true));
+      const visuallyLocked = !structurallyVisible || (courseBlocked && item.type === "lesson" && item.allowWhenBlocked !== true);
       const button = document.createElement("button");
       const progress = lessonProgressFor(item);
-      button.className = `course-row${accessible ? "" : " is-locked"} course-row--${progress}`;
+      button.className = `course-row${visuallyLocked ? " is-locked" : ""}${accessible ? "" : " is-denied-row"} course-row--${progress}`;
       button.type = "button";
       button.dataset.courseId = item.id;
       button.innerHTML = `<span class="course-number">[${String(index + 1).padStart(2, "0")}]</span><span class="course-name"></span><span class="course-state" aria-hidden="true"></span><span class="course-arrow">→</span>`;
@@ -1692,8 +1744,9 @@ function handleCourseClick(event) {
   if (!row) return;
   const id = row.dataset.courseId;
   const found = findNode(savedStructure, id);
-  const courseBlocked = !isStaffAccount(currentAccount) && currentAccount?.courseAccess === false;
-  if (!found || !isEffectivelyVisible(id) || (courseBlocked && found.item.type !== "section")) {
+  const courseBlocked = currentAccount?.courseAccess === false;
+  const lessonUnavailable = found?.item?.type === "lesson" && (!isEffectivelyVisible(id) || (courseBlocked && found.item.allowWhenBlocked !== true));
+  if (!found || lessonUnavailable) {
     row.classList.add("is-denied");
     showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
     window.setTimeout(() => row.classList.remove("is-denied"), 500);
@@ -1819,7 +1872,12 @@ function renderReaderProgram(currentLessonId) {
   });
 }
 
-function openLessonReader(lesson) {
+function openLessonReader(lesson, { historyMode = "push" } = {}) {
+  const courseBlocked = currentAccount?.courseAccess === false;
+  if (!isEffectivelyVisible(lesson.id) || (courseBlocked && lesson.allowWhenBlocked !== true)) {
+    showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
+    return;
+  }
   const hierarchy = hierarchyFor(lesson.id) ?? [lesson];
   markLessonVisited(lesson.id);
   courseBrowser.classList.add("is-hidden");
@@ -1831,6 +1889,9 @@ function openLessonReader(lesson) {
   syncConiferAvailability();
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
+  const nextUrl = `/lesson/${encodeURIComponent(lesson.id)}`;
+  if (historyMode === "replace") history.replaceState({ lessonId: lesson.id }, "", nextUrl);
+  else if (location.pathname !== nextUrl) history.pushState({ lessonId: lesson.id }, "", nextUrl);
   renderLessonNavigation(lesson);
   renderReaderProgram(lesson.id);
   renderReaderBlocks(lesson.blocks ?? [], lesson.allowDownloads);
@@ -1917,6 +1978,16 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
     } else if (block.type === "divider") {
       element.setAttribute("role", "separator");
       element.setAttribute("aria-label", "Разделитель");
+    } else if (block.type === "accordion") {
+      const details = document.createElement("details");
+      details.className = "reader-accordion";
+      const summary = document.createElement("summary");
+      summary.textContent = block.title || "Подробнее";
+      const content = document.createElement("div");
+      content.className = "reader-accordion-content";
+      content.innerHTML = block.html || "";
+      details.append(summary, content);
+      element.appendChild(details);
     } else {
       const asset = await getAsset(block.id);
       if (renderToken !== readerRenderToken) return;
@@ -2100,6 +2171,7 @@ function openLessonEditor(id) {
     if (block.type === "callout") normalizeCalloutBlock(block);
   });
   editorDraft.allowDownloads ??= false;
+  editorDraft.allowWhenBlocked ??= false;
   editorOriginal = clone(editorDraft);
   const path = hierarchyFor(id, draftStructure) ?? [found.item];
   editorPath.textContent = path.map((item) => item.title).join("  /  ");
@@ -2108,6 +2180,7 @@ function openLessonEditor(id) {
   editorRoleLabel.textContent = "АДМИН";
   lessonNameInput.value = editorDraft.title;
   allowDownloads.checked = editorDraft.allowDownloads;
+  if (allowWhenBlocked) allowWhenBlocked.checked = editorDraft.allowWhenBlocked;
   updateEditorVisibility();
   renderEditorBlocks();
   updateEditorState();
@@ -2170,10 +2243,11 @@ function renderEditorBlocks() {
     row.className = `lesson-block lesson-block--${block.type}${blockDragId === block.id ? " is-dragging" : ""}${blockDragTargetId === block.id && blockDragId !== block.id ? " is-drag-target" : ""}${blockDragTargetId === block.id && blockDragAfter ? " is-drop-after" : ""}`;
     row.dataset.blockId = block.id;
     if (block.type === "callout") row.style.setProperty("--callout-color", block.color);
-    const label = { heading: "ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
+    const label = { heading: "ЗАГОЛОВОК", accordion: "РАСКРЫВАЮЩИЙСЯ ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
     row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-delete" type="button" data-block-action="delete" aria-label="Удалить блок"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     const editor = row.querySelector(".block-editor");
     if (block.type === "heading") renderHeadingBlock(editor, block);
+    else if (block.type === "accordion") renderAccordionBlock(editor, block);
     else if (block.type === "text") renderTextBlock(editor, block);
     else if (block.type === "callout") renderCalloutBlock(editor, block);
     else if (block.type === "divider") renderDividerBlock(editor);
@@ -2336,6 +2410,23 @@ function renderTextBlock(container, block) {
   container.append(toolbar, area);
 }
 
+function renderAccordionBlock(container, block) {
+  const title = document.createElement("input");
+  title.type = "text";
+  title.className = "accordion-title-input";
+  title.placeholder = "Заголовок";
+  title.value = block.title || "";
+  const toolbar = document.createElement("div");
+  const area = document.createElement("div");
+  area.className = "rich-text";
+  area.contentEditable = "true";
+  area.dataset.placeholder = "Содержимое раскрывающегося блока";
+  area.innerHTML = block.html || "";
+  title.addEventListener("input", () => { block.title = title.value; updateEditorState(); });
+  buildRichTextToolbar(toolbar, area, block);
+  container.append(title, toolbar, area);
+}
+
 function renderCalloutBlock(container, block) {
   normalizeCalloutBlock(block);
   const settings = document.createElement("div");
@@ -2478,6 +2569,7 @@ function closeBlockPicker() {
 function addLessonBlock(type) {
   const block = { id: uid("block"), type };
   if (type === "heading") Object.assign(block, { level: "h1", align: "left", color: "", text: "" });
+  if (type === "accordion") Object.assign(block, { title: "Раскрывающийся заголовок", html: "" });
   if (type === "text" || type === "callout") block.html = "";
   if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!", color: CALLOUT_DEFAULT_COLOR });
   editorDraft.blocks.push(block);
@@ -2541,6 +2633,7 @@ function saveEditorLesson() {
   if (!editorDraft) return;
   editorDraft.title = lessonNameInput.value.trim() || "Без названия";
   editorDraft.allowDownloads = allowDownloads.checked;
+  editorDraft.allowWhenBlocked = Boolean(allowWhenBlocked?.checked);
   const draftFound = findNode(draftStructure, editorLessonId);
   const persisted = findNode(savedStructure, editorLessonId);
   if (!draftFound || !persisted) {
@@ -2572,27 +2665,22 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const login = loginInput.value.trim().toLowerCase();
   const password = passwordInput.value;
-  let account = null;
-  let authenticatedViaApi = false;
   try {
     const { response, body } = await apiRequest("/auth/login", {
       method: "POST",
       body: JSON.stringify({ login, password }),
     });
     if (response.ok) {
-      account = normalizeAccount(body.account);
-      authenticatedViaApi = true;
+      const account = normalizeAccount(body.account);
+      backendConnected = true;
       accountStore = normalizeAccounts([account, ...accountStore.filter((item) => item.login !== account.login)]);
-    } else if (response.status === 401 || response.status === 400) {
-      return triggerError();
+      await hydrateFromServer(account);
+      passwordHelp.classList.remove("is-visible");
+      showWelcome(account, body.consent);
+      return;
     }
   } catch {}
-  if (!account) account = accountStore.find((item) => item.login === login && item.password === password);
-  if (!account) return triggerError();
-  backendConnected = authenticatedViaApi;
-  if (backendConnected) await hydrateFromServer(account);
-  passwordHelp.classList.remove("is-visible");
-  showWelcome(account);
+  triggerError();
 });
 adminMark.addEventListener("click", () => {
   if (!adminMark.classList.contains("is-visible")) return;
@@ -2711,7 +2799,20 @@ courseGuideBack.addEventListener("click", () => {
   renderCourse();
 });
 
-readerBack.addEventListener("click", renderCourse);
+readerBack.addEventListener("click", () => {
+  history.pushState({ view: "course" }, "", "/");
+  renderCourse();
+});
+
+window.addEventListener("popstate", () => {
+  if (location.pathname === "/offers" && currentAccount) return openOffers({ push: false });
+  const match = location.pathname.match(/^\/lesson\/([^/]+)$/);
+  if (match && currentAccount) {
+    const found = findNode(savedStructure, decodeURIComponent(match[1]));
+    if (found?.item?.type === "lesson") openLessonReader(found.item, { historyMode: "replace" });
+    else renderCourse();
+  } else if (currentAccount) renderCourse();
+});
 
 readerProgramList?.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-program-toggle]");
@@ -2803,6 +2904,11 @@ allowDownloads.addEventListener("change", () => {
   editorDraft.allowDownloads = allowDownloads.checked;
   updateEditorState();
 });
+allowWhenBlocked?.addEventListener("change", () => {
+  if (!editorDraft) return;
+  editorDraft.allowWhenBlocked = allowWhenBlocked.checked;
+  updateEditorState();
+});
 addBlockButton.addEventListener("click", openBlockPicker);
 blockPickerCancel.addEventListener("click", closeBlockPicker);
 blockPickerLayer.addEventListener("click", (event) => { if (event.target === blockPickerLayer) closeBlockPicker(); });
@@ -2849,6 +2955,12 @@ resetColors.addEventListener("click", () => {
   saveSettings();
   applyPlatformSettings();
   showNotice("ЦВЕТА ВОССТАНОВЛЕНЫ", "success");
+});
+[["#offersBlockedAccess", "offersAllowWhenBlocked"], ["#clubBlockedAccess", "clubAllowWhenBlocked"]].forEach(([selector, key]) => {
+  $(selector)?.addEventListener("click", () => {
+    platformSettings[key] = platformSettings[key] === false;
+    saveSettings(); applyPlatformSettings(); showNotice("НАСТРОЙКА СОХРАНЕНА", "success");
+  });
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Delete" || editingId || !selectedId || !structureView?.classList.contains("is-current")) return;
@@ -2916,6 +3028,184 @@ accountCourseAccess.addEventListener("click", () => {
   accountCourseAccess.querySelector(".setting-switch-label").textContent = open ? "ОТКРЫТ" : "ЗАКРЫТ";
 });
 
+function clubSettings() {
+  return { ...DEFAULT_SETTINGS.club, ...(platformSettings.club || {}) };
+}
+function fillClubSettingsForm() {
+  const club = clubSettings();
+  $("#clubTitleSetting").value = club.title;
+  $("#clubDescriptionSetting").value = club.description;
+  $("#clubTelegramSetting").value = club.telegram;
+  $("#clubButtonTextSetting").value = club.buttonText;
+  $("#clubChatSetting").value = club.chatUrl;
+}
+function openClub() {
+  if (currentAccount?.courseAccess === false && platformSettings.clubAllowWhenBlocked !== true) return showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
+  const club = clubSettings();
+  $("#clubTitle").textContent = club.title.toUpperCase();
+  $("#clubDescription").textContent = club.description;
+  $("#clubTelegram").href = club.telegram;
+  $("#clubTelegram").textContent = club.telegram.replace(/^https?:\/\/t\.me\//, "@");
+  $("#clubChat").href = club.chatUrl;
+  $("#clubChat").textContent = club.buttonText.toUpperCase();
+  $("#clubLayer").classList.add("is-visible");
+  $("#clubLayer").setAttribute("aria-hidden", "false");
+}
+$("#clubButton")?.addEventListener("click", openClub);
+$("#clubClose")?.addEventListener("click", () => {
+  $("#clubLayer").classList.remove("is-visible");
+  $("#clubLayer").setAttribute("aria-hidden", "true");
+});
+$("#saveClubSettings")?.addEventListener("click", () => {
+  platformSettings.club = {
+    title: $("#clubTitleSetting").value.trim() || DEFAULT_SETTINGS.club.title,
+    description: $("#clubDescriptionSetting").value.trim() || DEFAULT_SETTINGS.club.description,
+    telegram: $("#clubTelegramSetting").value.trim() || DEFAULT_SETTINGS.club.telegram,
+    buttonText: $("#clubButtonTextSetting").value.trim() || DEFAULT_SETTINGS.club.buttonText,
+    chatUrl: $("#clubChatSetting").value.trim() || DEFAULT_SETTINGS.club.chatUrl,
+  };
+  saveSettings();
+  showNotice("НАСТРОЙКИ КЛУБА СОХРАНЕНЫ", "success");
+});
+
+function formatOffersDate(value) {
+  const date = new Date(`${value || "2026-10-08"}T12:00:00`);
+  const months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  return `Обновлено ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} года`;
+}
+function renderOffers(editing = false) {
+  const host = $("#offersContent");
+  host.innerHTML = "";
+  const offers = Array.isArray(platformSettings.offers) ? platformSettings.offers : clone(DEFAULT_SETTINGS.offers);
+  $("#offersUpdated").textContent = formatOffersDate(platformSettings.offersUpdatedAt);
+  offers.forEach((offer, index) => {
+    if (!editing) {
+      const details = document.createElement("details");
+      details.className = "offers-group";
+      const summary = document.createElement("summary");
+      summary.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span><strong></strong><i>+</i>`;
+      summary.querySelector("strong").textContent = offer.title;
+      const content = document.createElement("div"); content.className = "offers-group-content"; content.innerHTML = offer.content || "";
+      details.append(summary, content); host.appendChild(details);
+      return;
+    }
+    const row = document.createElement("section"); row.className = "offers-editor-row"; row.dataset.offerId = offer.id;
+    row.innerHTML = `<input class="offers-editor-title" aria-label="Название раздела"><textarea class="offers-editor-copy" rows="5" aria-label="Содержимое"></textarea><div><button data-offer-up type="button">↑</button><button data-offer-down type="button">↓</button><button data-offer-delete type="button">УДАЛИТЬ</button></div>`;
+    row.querySelector("input").value = offer.title; row.querySelector("textarea").value = offer.content || ""; host.appendChild(row);
+  });
+  if (editing) {
+    const actions = document.createElement("div"); actions.className = "offers-editor-actions";
+    actions.innerHTML = '<button data-offer-add type="button">+ РАЗДЕЛ</button><button data-offer-save type="button">СОХРАНИТЬ</button>';
+    host.appendChild(actions);
+  }
+}
+function openOffers({ push = true } = {}) {
+  if (currentAccount?.courseAccess === false && platformSettings.offersAllowWhenBlocked !== true) return showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
+  renderOffers(false);
+  $("#offersEdit").hidden = !isStaffAccount(currentAccount);
+  setPage(offersPage);
+  if (push && location.pathname !== "/offers") history.pushState({ view: "offers" }, "", "/offers");
+}
+$("#offersButton")?.addEventListener("click", openOffers);
+$("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
+$("#offersEdit")?.addEventListener("click", () => renderOffers(true));
+$("#offersContent")?.addEventListener("click", (event) => {
+  const rows = [...$("#offersContent").querySelectorAll(".offers-editor-row")];
+  const row = event.target.closest(".offers-editor-row");
+  if (event.target.closest("[data-offer-add]")) {
+    platformSettings.offers = [...(platformSettings.offers || []), { id: uid("offer"), title: "Новый раздел", content: "" }];
+    return renderOffers(true);
+  }
+  if (!row) {
+    if (event.target.closest("[data-offer-save]")) {
+      platformSettings.offers = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value.trim() || "Без названия", content: item.querySelector("textarea").value }));
+      platformSettings.offersUpdatedAt = new Date().toISOString().slice(0, 10);
+      saveSettings(); renderOffers(false); showNotice("ОФФЕРЫ СОХРАНЕНЫ", "success");
+    }
+    return;
+  }
+  const index = rows.indexOf(row);
+  const data = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value, content: item.querySelector("textarea").value }));
+  if (event.target.closest("[data-offer-delete]")) data.splice(index, 1);
+  if (event.target.closest("[data-offer-up]") && index > 0) [data[index - 1], data[index]] = [data[index], data[index - 1]];
+  if (event.target.closest("[data-offer-down]") && index < data.length - 1) [data[index + 1], data[index]] = [data[index], data[index + 1]];
+  platformSettings.offers = data; renderOffers(true);
+});
+
+async function openConsentsFor(account) {
+  const { response, body } = await apiRequest(`/accounts/${account.id}/consents`);
+  if (!response.ok) return showNotice("НЕ УДАЛОСЬ ЗАГРУЗИТЬ СОГЛАСИЯ", "error");
+  const names = { privacy: "Политика персональных данных", personal_data: "Согласие на обработку данных", agreement: "Пользовательское соглашение", age_18: "Подтверждение 18+" };
+  $("#consentsAdminList").innerHTML = body.consents.length ? body.consents.map((item) => `<article class="consent-record"><strong>${names[item.documentType] || item.documentType}</strong><span>Версия ${item.version}</span><span>${item.accepted ? "Принято" : "Не принято"}</span><time>${new Date(item.acceptedAt).toLocaleString("ru-RU")}</time><small>ID: ${item.id}</small></article>`).join("") : "<p>Согласия пока не зафиксированы.</p>";
+  $("#consentsAdminLayer").classList.add("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "false");
+}
+$("#consentsAdminClose")?.addEventListener("click", () => { $("#consentsAdminLayer").classList.remove("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "true"); });
+
+async function openArchive() {
+  const { response, body } = await apiRequest("/accounts?archived=true");
+  if (!response.ok) return showNotice("НЕ УДАЛОСЬ ОТКРЫТЬ АРХИВ", "error");
+  const host = $("#archiveList"); host.innerHTML = "";
+  body.accounts.forEach((account) => {
+    const card = document.createElement("article"); card.className = "archive-card";
+    card.innerHTML = `<div><strong></strong><span class="archive-telegram"></span><span class="archive-login"></span><span class="archive-role"></span><small class="archive-dates"></small><small class="archive-id"></small></div><div class="archive-card-actions"><button data-archive-consents type="button">СОГЛАСИЯ</button><button data-archive-delete type="button">УДАЛИТЬ НАВСЕГДА</button></div>`;
+    card.querySelector("strong").textContent = accountDisplayName(account);
+    card.querySelector(".archive-telegram").textContent = account.telegram || "Telegram";
+    card.querySelector(".archive-login").textContent = `Логин: ${account.login}`;
+    card.querySelector(".archive-role").textContent = `Роль: ${account.role}`;
+    card.querySelector(".archive-dates").textContent = `Создан: ${new Date(account.createdAt).toLocaleString("ru-RU")} · В архиве: ${new Date(account.archivedAt).toLocaleString("ru-RU")}`;
+    card.querySelector(".archive-id").textContent = `ID: ${account.id}`;
+    card.querySelector("[data-archive-consents]").addEventListener("click", () => openConsentsFor(account));
+    card.querySelector("[data-archive-delete]").addEventListener("click", async () => {
+      if (!confirm(`Удалить аккаунт «${accountDisplayName(account)}» навсегда? Это действие нельзя отменить.`)) return;
+      const result = await apiRequest(`/archive/${account.id}`, { method: "DELETE" });
+      if (result.response.ok) { card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); }
+    }); host.appendChild(card);
+  });
+  if (!body.accounts.length) host.innerHTML = "<p>Архив пуст.</p>";
+  $("#archiveLayer").classList.add("is-visible"); $("#archiveLayer").setAttribute("aria-hidden", "false");
+}
+$("#archiveButton")?.addEventListener("click", openArchive);
+$("#archiveClose")?.addEventListener("click", () => { $("#archiveLayer").classList.remove("is-visible"); $("#archiveLayer").setAttribute("aria-hidden", "true"); });
+
+const documentsLayer = $("#documentsLayer");
+$("#documentsButton")?.addEventListener("click", () => {
+  documentsLayer.classList.add("is-visible");
+  documentsLayer.setAttribute("aria-hidden", "false");
+});
+$("[data-close-documents]")?.addEventListener("click", () => {
+  documentsLayer.classList.remove("is-visible");
+  documentsLayer.setAttribute("aria-hidden", "true");
+});
+documentsLayer?.addEventListener("click", (event) => {
+  if (event.target === documentsLayer) $("[data-close-documents]")?.click();
+});
+if (new URLSearchParams(location.search).has("documents")) {
+  window.setTimeout(() => $("#documentsButton")?.click(), 50);
+}
+
+const consentInputs = [$("#consentPersonalData"), $("#consentAgreement"), $("#consentAge")];
+const syncConsentButton = () => { $("#consentSubmit").disabled = !consentInputs.every((input) => input?.checked); };
+consentInputs.forEach((input) => input?.addEventListener("change", syncConsentButton));
+$("#consentSubmit")?.addEventListener("click", async () => {
+  if (!consentInputs.every((input) => input?.checked) || !pendingAuthenticatedAccount) return;
+  const button = $("#consentSubmit");
+  button.disabled = true;
+  const { response, body } = await apiRequest("/consents/accept", {
+    method: "POST",
+    body: JSON.stringify({ version: pendingConsentState?.version || "1.0", privacy: true, personalData: true, agreement: true, age18: true }),
+  });
+  if (!response.ok) {
+    $("#consentError").textContent = "Не удалось сохранить согласие. Проверьте соединение и попробуйте снова.";
+    button.disabled = false;
+    return;
+  }
+  const account = pendingAuthenticatedAccount;
+  pendingAuthenticatedAccount = null;
+  pendingConsentState = body.consent;
+  closeConsentLayer();
+  showWelcome(account, body.consent);
+});
+
 async function restoreSession() {
   applyPlatformSettings();
   renderCourse();
@@ -2928,16 +3218,16 @@ async function restoreSession() {
       accountStore = normalizeAccounts([account, ...accountStore.filter((item) => item.login !== account.login)]);
       await hydrateFromServer(account);
       splash.classList.add("is-gone");
-      showDashboard(account);
+      if (body.consent?.required) {
+        setPage(authPage);
+        pendingAuthenticatedAccount = account;
+        pendingConsentState = body.consent;
+        openConsentLayer();
+      } else showDashboard(account);
       return;
     }
   } catch {}
-  const savedSessionLogin = localStorage.getItem(SESSION_KEY);
-  const savedSessionAccount = accountStore.find((account) => account.login === savedSessionLogin);
-  if (savedSessionAccount) {
-    splash.classList.add("is-gone");
-    showDashboard(savedSessionAccount);
-  } else showAuth();
+  showAuth();
 }
 
 restoreSession();
