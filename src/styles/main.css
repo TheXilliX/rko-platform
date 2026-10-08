@@ -2313,6 +2313,32 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   border-top: 1px solid var(--line);
 }
 
+/* Review fixes: stable offer editor, final desktop alignment and lesson motion. */
+.offers-editor-copy[contenteditable="true"] {
+  min-height: 180px;
+  padding: 14px;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(32,34,31,.15);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  outline: none;
+}
+.offers-editor-copy[contenteditable="true"]:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--green) 10%,transparent);
+}
+.lesson-reader.is-lesson-transitioning .reader-title,
+.lesson-reader.is-lesson-transitioning .reader-content,
+.lesson-reader.is-lesson-transitioning .reader-navigation {
+  animation: lessonContentIn .48s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes lessonContentIn {
+  from { opacity: 0; filter: blur(7px); transform: translateY(12px); }
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
 .reader-nav-button {
   padding: 8px 0;
   border: 0;
@@ -3858,6 +3884,16 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     margin-top: 0;
     margin-bottom: 24px;
   }
+}
+
+@media (min-width: 721px) {
+  .learning-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin: 38px 0 52px;
+  }
+  .offers-page > .topbar .service-label { transform: translate(48px, 18px); }
+  .offers-page > .topbar .offers-top-actions { margin-right: 68px; transform: translateY(18px); }
 }
 
 /* Lesson progress and previous/next actions are part of the course flow. */
