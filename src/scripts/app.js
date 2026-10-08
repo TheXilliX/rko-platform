@@ -215,11 +215,34 @@ function normalizeHeadingBlock(block) {
 
 const API_BASE = "/api";
 const IS_GITHUB_PREVIEW = window.location.hostname === "thexillix.github.io";
+const PREVIEW_ACCOUNTS_KEY = "rko-preview-accounts-v1";
+const PREVIEW_ARCHIVE_KEY = "rko-preview-archive-v1";
+const PREVIEW_CONSENTS_KEY = "rko-preview-consents-v1";
 const GITHUB_PREVIEW_ACCOUNTS = [
-  { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "admin", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
-  { id: "preview-student", firstName: "Тестовый", lastName: "Ученик", login: "student-demo", telegram: "@student", role: "student", courseAccess: false },
+  { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "admin", password: "admin", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
+  { id: "preview-student", firstName: "Тестовый", lastName: "Ученик", login: "student-demo", password: "student-demo", telegram: "@student", role: "student", courseAccess: false },
 ];
-let githubPreviewArchive = [{ id: "preview-archived", firstName: "Архивный", lastName: "Аккаунт", login: "archive-demo", telegram: "@archive", role: "student", courseAccess: false, createdAt: "2026-10-01T09:00:00Z", archivedAt: "2026-10-08T09:00:00Z" }];
+function readPreviewList(key, fallback) {
+  try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : clone(fallback); }
+  catch { return clone(fallback); }
+}
+let githubPreviewAccounts = readPreviewList(PREVIEW_ACCOUNTS_KEY, GITHUB_PREVIEW_ACCOUNTS);
+let githubPreviewArchive = readPreviewList(PREVIEW_ARCHIVE_KEY, [{ id: "preview-archived", firstName: "Архивный", lastName: "Аккаунт", login: "archive-demo", telegram: "@archive", role: "student", courseAccess: false, createdAt: "2026-10-01T09:00:00Z", archivedAt: "2026-10-08T09:00:00Z" }]);
+function savePreviewState() {
+  if (!IS_GITHUB_PREVIEW) return;
+  localStorage.setItem(PREVIEW_ACCOUNTS_KEY, JSON.stringify(githubPreviewAccounts));
+  localStorage.setItem(PREVIEW_ARCHIVE_KEY, JSON.stringify(githubPreviewArchive));
+}
+function previewConsentAccepted(account) {
+  try { return JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}")[account?.id || account?.login] === "1.0"; }
+  catch { return false; }
+}
+function rememberPreviewConsent(account) {
+  let values = {};
+  try { values = JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}"); } catch {}
+  values[account?.id || account?.login] = "1.0";
+  localStorage.setItem(PREVIEW_CONSENTS_KEY, JSON.stringify(values));
+}
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
 const sameAccount = (a, b) => Boolean(a && b && ((a.id && b.id && a.id === b.id) || (a.login && b.login && a.login === b.login)));
@@ -322,6 +345,10 @@ function normalizeAccounts(list) {
 
 function saveAccounts() {
   // Accounts are server-owned. Never persist credentials or account records in the browser.
+  if (IS_GITHUB_PREVIEW) {
+    githubPreviewAccounts = accountStore.map((account) => ({ ...account }));
+    savePreviewState();
+  }
 }
 
 async function syncCourseToServer() {
@@ -1187,7 +1214,11 @@ async function deletePending() {
           return;
         }
       }
-      if (IS_GITHUB_PREVIEW) githubPreviewArchive.unshift({ ...account, archivedAt: new Date().toISOString(), createdAt: account.createdAt || new Date().toISOString() });
+      if (IS_GITHUB_PREVIEW) {
+        githubPreviewArchive.unshift({ ...account, archivedAt: new Date().toISOString(), createdAt: account.createdAt || new Date().toISOString() });
+        githubPreviewAccounts = accountStore.filter((item) => item !== account);
+        savePreviewState();
+      }
       accountStore = accountStore.filter((item) => item !== account);
       saveAccounts();
       renderAccounts();
@@ -1554,7 +1585,7 @@ async function submitAccountForm(event) {
       }
       accountStore.push(normalizeAccount(body.account));
     } else {
-      accountStore.push(normalizeAccount(payload));
+      accountStore.push(normalizeAccount({ ...payload, id: uid("preview-account"), createdAt: new Date().toISOString() }));
     }
     saveAccounts();
     renderAccounts();
@@ -1893,6 +1924,10 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
   courseBrowser.classList.add("is-hidden");
   learningTitle.classList.add("is-reader-hidden");
   lessonReader.classList.add("is-visible");
+  lessonReader.classList.remove("is-lesson-transitioning");
+  void lessonReader.offsetWidth;
+  lessonReader.classList.add("is-lesson-transitioning");
+  window.setTimeout(() => lessonReader.classList.remove("is-lesson-transitioning"), 520);
   lessonReader.setAttribute("aria-hidden", "false");
   lessonReader.scrollTop = 0;
   requestAnimationFrame(() => { lessonReader.scrollTop = 0; });
@@ -2675,12 +2710,15 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const login = loginInput.value.trim().toLowerCase();
   const password = passwordInput.value;
-  if (IS_GITHUB_PREVIEW && login === "admin" && password === "admin") {
-    const account = normalizeAccount(GITHUB_PREVIEW_ACCOUNTS.find((item) => item.login === "admin"));
+  if (IS_GITHUB_PREVIEW) {
+    const previewAccount = githubPreviewAccounts.find((item) => item.login === login && item.password === password);
+    if (!previewAccount) return triggerError();
+    const account = normalizeAccount(previewAccount);
     backendConnected = false;
-    accountStore = normalizeAccounts(GITHUB_PREVIEW_ACCOUNTS);
+    accountStore = normalizeAccounts(githubPreviewAccounts);
     passwordHelp.classList.remove("is-visible");
-    showWelcome(account, { required: true, accepted: false, version: "1.0" });
+    const accepted = previewConsentAccepted(account);
+    showWelcome(account, { required: !accepted, accepted, version: "1.0" });
     return;
   }
   try {
@@ -3108,8 +3146,8 @@ function renderOffers(editing = false) {
       return;
     }
     const row = document.createElement("section"); row.className = "offers-editor-row"; row.dataset.offerId = offer.id;
-    row.innerHTML = `<input class="offers-editor-title" aria-label="Название раздела"><div class="offers-editor-toolbar"><button data-offer-bold type="button" title="Жирный текст"><strong>B</strong></button></div><textarea class="offers-editor-copy" rows="7" aria-label="Содержимое"></textarea><div class="offers-editor-row-actions"><button data-offer-up type="button">↑</button><button data-offer-down type="button">↓</button><button data-offer-delete type="button">УДАЛИТЬ</button></div>`;
-    row.querySelector("input").value = offer.title; row.querySelector("textarea").value = offer.content || ""; host.appendChild(row);
+    row.innerHTML = `<input class="offers-editor-title" aria-label="Название раздела"><div class="offers-editor-toolbar"><button data-offer-bold type="button" title="Жирный текст"><strong>B</strong></button></div><div class="offers-editor-copy" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Содержимое"></div><div class="offers-editor-row-actions"><button data-offer-up type="button">↑</button><button data-offer-down type="button">↓</button><button data-offer-delete type="button">УДАЛИТЬ</button></div>`;
+    row.querySelector("input").value = offer.title; row.querySelector(".offers-editor-copy").innerHTML = offer.content || ""; host.appendChild(row);
   });
   if (editing) {
     const actions = document.createElement("div"); actions.className = "offers-editor-actions";
@@ -3137,7 +3175,7 @@ $("#offersContent")?.addEventListener("click", (event) => {
   }
   if (!row) {
     if (event.target.closest("[data-offer-save]")) {
-      platformSettings.offers = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value.trim() || "Без названия", content: item.querySelector("textarea").value }));
+      platformSettings.offers = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value.trim() || "Без названия", content: item.querySelector(".offers-editor-copy").innerHTML }));
       platformSettings.offersUpdatedAt = new Date().toISOString().slice(0, 10);
       saveSettings(); renderOffers(false); showNotice("ОФФЕРЫ СОХРАНЕНЫ", "success");
     }
@@ -3145,25 +3183,27 @@ $("#offersContent")?.addEventListener("click", (event) => {
   }
   const index = rows.indexOf(row);
   if (event.target.closest("[data-offer-bold]")) {
-    const input = row.querySelector("textarea");
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const selected = input.value.slice(start, end) || "жирный текст";
-    input.setRangeText(`<strong>${selected}</strong>`, start, end, "select");
+    const input = row.querySelector(".offers-editor-copy");
     input.focus();
+    document.execCommand("bold", false);
     return;
   }
-  const data = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value, content: item.querySelector("textarea").value }));
-  if (event.target.closest("[data-offer-delete]")) data.splice(index, 1);
-  if (event.target.closest("[data-offer-up]") && index > 0) [data[index - 1], data[index]] = [data[index], data[index - 1]];
-  if (event.target.closest("[data-offer-down]") && index < data.length - 1) [data[index + 1], data[index]] = [data[index], data[index + 1]];
+  const action = event.target.closest("[data-offer-delete], [data-offer-up], [data-offer-down]");
+  if (!action) return;
+  const data = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value, content: item.querySelector(".offers-editor-copy").innerHTML }));
+  if (action.matches("[data-offer-delete]")) data.splice(index, 1);
+  if (action.matches("[data-offer-up]") && index > 0) [data[index - 1], data[index]] = [data[index], data[index - 1]];
+  if (action.matches("[data-offer-down]") && index < data.length - 1) [data[index + 1], data[index]] = [data[index], data[index + 1]];
   platformSettings.offers = data; renderOffers(true);
+});
+$("#offersContent")?.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-offer-bold]")) event.preventDefault();
 });
 
 async function openConsentsFor(account) {
   if (IS_GITHUB_PREVIEW) {
     const acceptedAt = "2026-10-08T12:00:00Z";
-    const demo = ["personal_data", "agreement", "age_18"].map((documentType, index) => ({ id: `preview-consent-${index + 1}`, documentType, version: "1.0", accepted: true, acceptedAt }));
+    const demo = ["privacy", "personal_data", "agreement", "age_18"].map((documentType, index) => ({ id: `preview-consent-${index + 1}`, documentType, version: "1.0", accepted: true, acceptedAt }));
     renderConsentRecords(demo);
     return;
   }
@@ -3201,14 +3241,15 @@ async function openArchive() {
       if (IS_GITHUB_PREVIEW) {
         githubPreviewArchive = githubPreviewArchive.filter((item) => item.id !== account.id);
         accountStore.push(normalizeAccount({ ...account, archivedAt: null, isActive: true }));
-        renderAccounts(); openArchive(); showNotice("АККАУНТ ВОССТАНОВЛЕН", "success"); return;
+        githubPreviewAccounts = accountStore.map((item) => ({ ...item }));
+        savePreviewState(); renderAccounts(); openArchive(); showNotice("АККАУНТ ВОССТАНОВЛЕН", "success"); return;
       }
       const result = await apiRequest(`/archive/${account.id}/restore`, { method: "POST" });
       if (result.response.ok) { accountStore.push(normalizeAccount(result.body.account)); renderAccounts(); openArchive(); showNotice("АККАУНТ ВОССТАНОВЛЕН", "success"); }
     });
     card.querySelector("[data-archive-delete]").addEventListener("click", async () => {
       if (!confirm(`Удалить аккаунт «${accountDisplayName(account)}» навсегда? Это действие нельзя отменить.`)) return;
-      if (IS_GITHUB_PREVIEW) { githubPreviewArchive = githubPreviewArchive.filter((item) => item.id !== account.id); card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); return; }
+      if (IS_GITHUB_PREVIEW) { githubPreviewArchive = githubPreviewArchive.filter((item) => item.id !== account.id); savePreviewState(); card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); return; }
       const result = await apiRequest(`/archive/${account.id}`, { method: "DELETE" });
       if (result.response.ok) { card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); }
     }); host.appendChild(card);
@@ -3258,7 +3299,7 @@ $("#consentSubmit")?.addEventListener("click", async () => {
       return;
     }
     body = result.body;
-  }
+  } else rememberPreviewConsent(pendingAuthenticatedAccount);
   const account = pendingAuthenticatedAccount;
   pendingAuthenticatedAccount = null;
   pendingConsentState = body.consent;
