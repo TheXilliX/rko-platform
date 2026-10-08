@@ -141,6 +141,7 @@ const DEFAULT_SETTINGS = {
     title: "Клуб Влад 2Hard",
     description: "Закрытое пространство для участников курса: общение, поддержка, разборы и рабочие обновления без лишнего шума.",
     telegram: "https://t.me/Vlad_2Hard",
+    telegramText: "@Vlad_2Hard",
     buttonText: "Закрытый чат",
     chatUrl: "https://t.me/+je1JF-48PyU3NzYy",
   },
@@ -3099,6 +3100,7 @@ function fillClubSettingsForm() {
   $("#clubTitleSetting").value = club.title;
   $("#clubDescriptionSetting").value = club.description;
   $("#clubTelegramSetting").value = club.telegram;
+  $("#clubTelegramTextSetting").value = club.telegramText || "";
   $("#clubButtonTextSetting").value = club.buttonText;
   $("#clubChatSetting").value = club.chatUrl;
 }
@@ -3108,7 +3110,7 @@ function openClub() {
   $("#clubTitle").textContent = club.title.toUpperCase();
   $("#clubDescription").textContent = club.description;
   $("#clubTelegram").href = club.telegram;
-  $("#clubTelegram").textContent = club.telegram.replace(/^https?:\/\/t\.me\//, "@");
+  $("#clubTelegram").textContent = club.telegramText || club.telegram.replace(/^https?:\/\/t\.me\//, "@");
   $("#clubChat").href = club.chatUrl;
   $("#clubChat").textContent = club.buttonText.toUpperCase();
   $("#clubLayer").classList.add("is-visible");
@@ -3124,6 +3126,7 @@ $("#saveClubSettings")?.addEventListener("click", () => {
     title: $("#clubTitleSetting").value.trim() || DEFAULT_SETTINGS.club.title,
     description: $("#clubDescriptionSetting").value.trim() || DEFAULT_SETTINGS.club.description,
     telegram: $("#clubTelegramSetting").value.trim() || DEFAULT_SETTINGS.club.telegram,
+    telegramText: $("#clubTelegramTextSetting").value.trim() || DEFAULT_SETTINGS.club.telegramText,
     buttonText: $("#clubButtonTextSetting").value.trim() || DEFAULT_SETTINGS.club.buttonText,
     chatUrl: $("#clubChatSetting").value.trim() || DEFAULT_SETTINGS.club.chatUrl,
   };
@@ -3139,6 +3142,8 @@ function formatOffersDate(value) {
 function renderOffers(editing = false) {
   const host = $("#offersContent");
   host.innerHTML = "";
+  $("#offersEdit").classList.toggle("is-editing", editing);
+  $("#offersSave").hidden = !editing;
   const offers = Array.isArray(platformSettings.offers) ? platformSettings.offers : clone(DEFAULT_SETTINGS.offers);
   $("#offersUpdated").textContent = formatOffersDate(platformSettings.offersUpdatedAt);
   offers.forEach((offer, index) => {
@@ -3158,9 +3163,17 @@ function renderOffers(editing = false) {
   });
   if (editing) {
     const actions = document.createElement("div"); actions.className = "offers-editor-actions";
-    actions.innerHTML = '<button data-offer-add type="button">+ РАЗДЕЛ</button><button data-offer-save type="button">СОХРАНИТЬ</button>';
+    actions.innerHTML = '<button data-offer-add type="button">+ РАЗДЕЛ</button>';
     host.appendChild(actions);
   }
+}
+function saveOffers() {
+  const rows = [...$("#offersContent").querySelectorAll(".offers-editor-row")];
+  platformSettings.offers = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value.trim() || "Без названия", content: item.querySelector(".offers-editor-copy").innerHTML }));
+  platformSettings.offersUpdatedAt = new Date().toISOString().slice(0, 10);
+  saveSettings();
+  renderOffers(false);
+  showNotice("ОФФЕРЫ СОХРАНЕНЫ", "success");
 }
 function openOffers({ push = true } = {}) {
   if (currentAccount?.courseAccess === false && platformSettings.offersAllowWhenBlocked !== true) return showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
@@ -3173,6 +3186,7 @@ $("#offersButton")?.addEventListener("click", openOffers);
 $("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
 $("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
 $("#offersEdit")?.addEventListener("click", () => renderOffers(true));
+$("#offersSave")?.addEventListener("click", saveOffers);
 $("#offersContent")?.addEventListener("click", (event) => {
   const rows = [...$("#offersContent").querySelectorAll(".offers-editor-row")];
   const row = event.target.closest(".offers-editor-row");
@@ -3181,11 +3195,6 @@ $("#offersContent")?.addEventListener("click", (event) => {
     return renderOffers(true);
   }
   if (!row) {
-    if (event.target.closest("[data-offer-save]")) {
-      platformSettings.offers = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value.trim() || "Без названия", content: item.querySelector(".offers-editor-copy").innerHTML }));
-      platformSettings.offersUpdatedAt = new Date().toISOString().slice(0, 10);
-      saveSettings(); renderOffers(false); showNotice("ОФФЕРЫ СОХРАНЕНЫ", "success");
-    }
     return;
   }
   const index = rows.indexOf(row);
