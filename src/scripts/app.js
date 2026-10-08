@@ -1770,7 +1770,9 @@ function renderCourse() {
         : item.type === "module"
           ? structurallyVisible && !courseBlocked
           : structurallyVisible && (!courseBlocked || item.allowWhenBlocked === true);
-      const visuallyLocked = !accessible;
+      // Sections remain enterable so a learner can see the outline, but a
+      // hidden section or a fully blocked course must be visibly muted too.
+      const visuallyLocked = !accessible || item.type === "section" && (courseBlocked || !item.visible);
       const button = document.createElement("button");
       const progress = lessonProgressFor(item);
       button.className = `course-row${visuallyLocked ? " is-locked" : ""}${accessible ? "" : " is-denied-row"} course-row--${progress}`;
