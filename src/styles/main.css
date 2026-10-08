@@ -3338,6 +3338,17 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     margin-right: auto;
   }
 }
+
+.offers-edit-stack { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+.offers-edit,
+.offers-save { transition: color .32s ease, background-color .32s ease, border-color .32s ease, transform .18s cubic-bezier(.22,1,.36,1), filter .32s ease; }
+.offers-edit.is-editing { color: #fff; background: var(--amber); border-color: var(--amber); }
+.offers-edit:active,
+.offers-save:active { transform: scale(.94); }
+.offers-save { min-height: 34px; padding: 0 15px; border: 1px solid var(--green); border-radius: 999px; background: transparent; color: var(--green); font: 700 10px/1 "DM Mono",monospace; letter-spacing: .08em; cursor: pointer; }
+.offers-save:hover { background: var(--green); color: #fff; }
+.offers-save:active { background: var(--green); color: #fff; filter: brightness(1.12); }
+.offers-close { line-height: 1; padding-bottom: 2px; }
 @media (max-width: 620px) {
   .reader-media-controls {
     grid-template-columns: auto minmax(60px, 1fr) auto auto;
