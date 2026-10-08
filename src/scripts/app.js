@@ -234,13 +234,20 @@ function savePreviewState() {
   localStorage.setItem(PREVIEW_ARCHIVE_KEY, JSON.stringify(githubPreviewArchive));
 }
 function previewConsentAccepted(account) {
-  try { return JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}")[account?.id || account?.login] === "1.0"; }
+  try { return Boolean(JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}")[account?.id || account?.login]); }
   catch { return false; }
 }
 function rememberPreviewConsent(account) {
   let values = {};
   try { values = JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}"); } catch {}
-  values[account?.id || account?.login] = "1.0";
+  const acceptedAt = new Date().toISOString();
+  values[account?.id || account?.login] = {
+    acceptedAt,
+    records: ["privacy", "personal_data", "agreement", "age_18"].map((documentType, index) => ({
+      id: `preview-consent-${account?.id || account?.login}-${index + 1}-${Date.now()}`,
+      documentType, version: "1.0", accepted: true, acceptedAt,
+    })),
+  };
   localStorage.setItem(PREVIEW_CONSENTS_KEY, JSON.stringify(values));
 }
 const isOwnerAccount = (account) => account?.role === "owner";
@@ -3202,8 +3209,12 @@ $("#offersContent")?.addEventListener("pointerdown", (event) => {
 
 async function openConsentsFor(account) {
   if (IS_GITHUB_PREVIEW) {
-    const acceptedAt = "2026-10-08T12:00:00Z";
-    const demo = ["privacy", "personal_data", "agreement", "age_18"].map((documentType, index) => ({ id: `preview-consent-${index + 1}`, documentType, version: "1.0", accepted: true, acceptedAt }));
+    let values = {};
+    try { values = JSON.parse(localStorage.getItem(PREVIEW_CONSENTS_KEY) || "{}"); } catch {}
+    const stored = values[account?.id || account?.login];
+    const legacyAccepted = stored === "1.0";
+    const acceptedAt = legacyAccepted ? new Date().toISOString() : null;
+    const demo = Array.isArray(stored) ? stored : stored?.records || (legacyAccepted ? ["privacy", "personal_data", "agreement", "age_18"].map((documentType, index) => ({ id: `preview-consent-${account?.id || account?.login}-${index + 1}`, documentType, version: "1.0", accepted: true, acceptedAt })) : []);
     renderConsentRecords(demo);
     return;
   }
@@ -3213,7 +3224,7 @@ async function openConsentsFor(account) {
 }
 function renderConsentRecords(consents) {
   const names = { privacy: "Политика персональных данных", personal_data: "Согласие на обработку данных", agreement: "Пользовательское соглашение", age_18: "Подтверждение 18+" };
-  $("#consentsAdminList").innerHTML = consents.length ? consents.map((item) => `<article class="consent-record"><strong>${names[item.documentType] || item.documentType}</strong><span>Версия ${item.version}</span><span>${item.accepted ? "Принято" : "Не принято"}</span><time>${new Date(item.acceptedAt).toLocaleString("ru-RU")}</time><small>ID: ${item.id}</small></article>`).join("") : "<p>Согласия пока не зафиксированы.</p>";
+  $("#consentsAdminList").innerHTML = consents.length ? consents.map((item) => `<article class="consent-record"><strong>${names[item.documentType] || item.documentType}</strong><span>Версия ${item.version}</span><span>${item.accepted ? "Принято" : "Не принято"}</span><time>${new Date(item.acceptedAt).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}</time><small>ID: ${item.id}</small></article>`).join("") : "<p>Согласия пока не зафиксированы.</p>";
   $("#consentsAdminLayer").classList.add("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "false");
 }
 $("#consentsAdminClose")?.addEventListener("click", () => { $("#consentsAdminLayer").classList.remove("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "true"); });
