@@ -4203,15 +4203,20 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   .lesson-reader > .reader-title,
   .lesson-reader > .reader-content,
   .lesson-reader > .reader-navigation {
-    width: min(900px, calc(100% - 500px));
+    /* Keep a guaranteed clear column for the right-hand course navigation. */
+    width: min(780px, calc(100% - 560px));
     max-width: none;
     margin-left: auto;
     margin-right: auto;
   }
 
+  .lesson-reader > .reader-title {
+    overflow-wrap: anywhere;
+  }
+
   .lesson-reader > .reader-back {
     width: max-content;
-    margin-left: max(0px, calc((100% - min(900px, calc(100% - 500px))) / 2));
+    margin-left: max(0px, calc((100% - min(780px, calc(100% - 560px))) / 2));
     margin-right: 0;
   }
 
