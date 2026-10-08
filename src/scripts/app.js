@@ -214,6 +214,11 @@ function normalizeHeadingBlock(block) {
 }
 
 const API_BASE = "/api";
+const IS_GITHUB_PREVIEW = window.location.hostname === "thexillix.github.io";
+const GITHUB_PREVIEW_ACCOUNTS = [
+  { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "owner-preview", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
+  { id: "preview-admin", firstName: "Администратор", lastName: "Демо", login: "admin", telegram: "@Vlad_2Hard", role: "admin", courseAccess: true },
+];
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
 const sameAccount = (a, b) => Boolean(a && b && ((a.id && b.id && a.id === b.id) || (a.login && b.login && a.login === b.login)));
@@ -2665,6 +2670,14 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const login = loginInput.value.trim().toLowerCase();
   const password = passwordInput.value;
+  if (IS_GITHUB_PREVIEW && login === "admin" && password === "admin") {
+    const account = normalizeAccount(GITHUB_PREVIEW_ACCOUNTS.find((item) => item.login === "admin"));
+    backendConnected = false;
+    accountStore = normalizeAccounts(GITHUB_PREVIEW_ACCOUNTS);
+    passwordHelp.classList.remove("is-visible");
+    showWelcome(account, { required: false, accepted: true, version: "preview" });
+    return;
+  }
   try {
     const { response, body } = await apiRequest("/auth/login", {
       method: "POST",
