@@ -155,11 +155,16 @@
               <div class="accounts-heading">
                 <div>
                   <p class="settings-card-label">УПРАВЛЕНИЕ ДОСТУПОМ</p>
-                  <h2>АККАУНТЫ</h2>
+                  <div class="accounts-section-tabs" id="accountsSectionTabs" aria-label="Аккаунты и архив">
+                    <button class="is-current" type="button" data-accounts-view="active">АККАУНТЫ</button>
+                    <button type="button" data-accounts-view="archive">АРХИВ</button>
+                    <span aria-hidden="true"></span>
+                  </div>
                 </div>
-                <div class="accounts-heading-actions"><button class="text-action" id="archiveButton" type="button">АРХИВ</button><button class="add-button" id="createAccountButton" type="button">+ СОЗДАТЬ АККАУНТ</button></div>
+                <div class="accounts-heading-actions"><button class="add-button" id="createAccountButton" type="button">+ СОЗДАТЬ АККАУНТ</button></div>
               </div>
-              <div class="accounts-list" id="accountsList"></div>
+              <div class="accounts-subview is-current" data-accounts-panel="active"><div class="accounts-list" id="accountsList"></div></div>
+              <div class="accounts-subview" data-accounts-panel="archive"><div class="archive-list" id="archiveList"></div></div>
             </section>
 
             <section class="admin-view placeholder-view" data-admin-view="settings">
@@ -494,7 +499,7 @@
     </div>
 
     <section class="page offers-page" id="offersPage" aria-label="Офферы">
-      <header class="topbar"><p class="service-label">[ RKO / ОФФЕРЫ ]</p><button class="nav-action" id="offersEdit" type="button">✎ РЕДАКТИРОВАТЬ</button></header>
+      <header class="topbar"><p class="service-label">[ RKO / ОФФЕРЫ ]</p><div class="offers-top-actions"><button class="nav-action offers-edit" id="offersEdit" type="button">РЕДАКТИРОВАТЬ</button><button class="offers-close" id="offersClose" type="button" aria-label="Закрыть офферы">×</button></div></header>
       <main class="offers-workspace"><button class="reader-back is-visible" id="offersBack" type="button">← НАЗАД</button><p class="offers-updated" id="offersUpdated"></p><h1>ОФФЕРЫ</h1><div id="offersContent" class="offers-content"></div></main>
     </section>
 
@@ -505,15 +510,11 @@
       </section>
     </div>
 
-    <div class="legal-layer archive-layer" id="archiveLayer" aria-hidden="true">
-      <section class="legal-menu archive-menu" role="dialog" aria-modal="true"><button class="legal-close" id="archiveClose" type="button">×</button><p class="legal-kicker">УДАЛЁННЫЕ АККАУНТЫ</p><h2>АРХИВ</h2><div id="archiveList" class="archive-list"></div></section>
-    </div>
-
     <div class="legal-layer" id="consentsAdminLayer" aria-hidden="true">
       <section class="legal-menu consents-admin-menu" role="dialog" aria-modal="true"><button class="legal-close" id="consentsAdminClose" type="button">×</button><p class="legal-kicker">ЮРИДИЧЕСКИЕ ДАННЫЕ</p><h2>СОГЛАСИЯ</h2><div id="consentsAdminList"></div></section>
     </div>
   </div>
 
-  <script type="module" src="./src/scripts/app.js?v=20261008-admin-preview-1"></script>
+  <script type="module" src="./src/scripts/app.js?v=20261008-review-fixes-1"></script>
 </body>
 </html>

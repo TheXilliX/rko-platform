@@ -205,6 +205,12 @@ app.delete("/api/archive/:id", loadSessionAccount, requireOwner, async (req, res
     res.status(204).end();
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
 });
+app.post("/api/archive/:id/restore", loadSessionAccount, requireOwner, async (req, res) => {
+  const target = await getAccountById(req.params.id, true);
+  if (!target?.archived_at) return res.status(404).json({ error: "ARCHIVED_ACCOUNT_NOT_FOUND" });
+  const { rows } = await pool.query("UPDATE accounts SET archived_at=NULL,is_active=TRUE,updated_at=NOW() WHERE id=$1 RETURNING *", [req.params.id]);
+  res.json({ account: publicAccount(rows[0]) });
+});
 app.post("/api/accounts/:id/password", loadSessionAccount, requireOwner, async (req, res) => {
   const password = String(req.body?.password || "");
   if (password.length < 8) return res.status(400).json({ error: "PASSWORD_TOO_SHORT" });

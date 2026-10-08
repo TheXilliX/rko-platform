@@ -216,9 +216,10 @@ function normalizeHeadingBlock(block) {
 const API_BASE = "/api";
 const IS_GITHUB_PREVIEW = window.location.hostname === "thexillix.github.io";
 const GITHUB_PREVIEW_ACCOUNTS = [
-  { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "owner-preview", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
-  { id: "preview-admin", firstName: "Администратор", lastName: "Демо", login: "admin", telegram: "@Vlad_2Hard", role: "admin", courseAccess: true },
+  { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "admin", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
+  { id: "preview-student", firstName: "Тестовый", lastName: "Ученик", login: "student-demo", telegram: "@student", role: "student", courseAccess: false },
 ];
+let githubPreviewArchive = [{ id: "preview-archived", firstName: "Архивный", lastName: "Аккаунт", login: "archive-demo", telegram: "@archive", role: "student", courseAccess: false, createdAt: "2026-10-01T09:00:00Z", archivedAt: "2026-10-08T09:00:00Z" }];
 const isOwnerAccount = (account) => account?.role === "owner";
 const isStaffAccount = (account) => isOwnerAccount(account) || account?.role === "admin";
 const sameAccount = (a, b) => Boolean(a && b && ((a.id && b.id && a.id === b.id) || (a.login && b.login && a.login === b.login)));
@@ -1186,6 +1187,7 @@ async function deletePending() {
           return;
         }
       }
+      if (IS_GITHUB_PREVIEW) githubPreviewArchive.unshift({ ...account, archivedAt: new Date().toISOString(), createdAt: account.createdAt || new Date().toISOString() });
       accountStore = accountStore.filter((item) => item !== account);
       saveAccounts();
       renderAccounts();
@@ -1687,11 +1689,7 @@ function lessonProgressFor(item) {
 
 function setLearningTitle(title = "РКО Влад 2Hard") {
   const value = String(title || "РКО Влад 2Hard").trim() || "РКО Влад 2Hard";
-  learningTitle.replaceChildren();
-  const initial = document.createElement("span");
-  initial.className = "display-initial";
-  initial.textContent = value[0];
-  learningTitle.append(initial, document.createTextNode(value.slice(1)));
+  learningTitle.textContent = value;
 }
 
 function transitionLearningTitle(title = "РКО Влад 2Hard") {
@@ -1728,8 +1726,12 @@ function renderCourse() {
     courseGuideBack.classList.toggle("is-visible", coursePath.length > 0);
     items.forEach((item, index) => {
       const structurallyVisible = isEffectivelyVisible(item.id);
-      const accessible = item.type !== "lesson" || (structurallyVisible && (!courseBlocked || item.allowWhenBlocked === true));
-      const visuallyLocked = !structurallyVisible || (courseBlocked && item.type === "lesson" && item.allowWhenBlocked !== true);
+      const accessible = item.type === "section"
+        ? true
+        : item.type === "module"
+          ? structurallyVisible && !courseBlocked
+          : structurallyVisible && (!courseBlocked || item.allowWhenBlocked === true);
+      const visuallyLocked = !accessible;
       const button = document.createElement("button");
       const progress = lessonProgressFor(item);
       button.className = `course-row${visuallyLocked ? " is-locked" : ""}${accessible ? "" : " is-denied-row"} course-row--${progress}`;
@@ -1750,8 +1752,11 @@ function handleCourseClick(event) {
   const id = row.dataset.courseId;
   const found = findNode(savedStructure, id);
   const courseBlocked = currentAccount?.courseAccess === false;
-  const lessonUnavailable = found?.item?.type === "lesson" && (!isEffectivelyVisible(id) || (courseBlocked && found.item.allowWhenBlocked !== true));
-  if (!found || lessonUnavailable) {
+  const structurallyVisible = found ? isEffectivelyVisible(id) : false;
+  const unavailable = !found
+    || (found.item.type === "module" && (!structurallyVisible || courseBlocked))
+    || (found.item.type === "lesson" && (!structurallyVisible || (courseBlocked && found.item.allowWhenBlocked !== true)));
+  if (unavailable) {
     row.classList.add("is-denied");
     showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
     window.setTimeout(() => row.classList.remove("is-denied"), 500);
@@ -2675,7 +2680,7 @@ authForm.addEventListener("submit", async (event) => {
     backendConnected = false;
     accountStore = normalizeAccounts(GITHUB_PREVIEW_ACCOUNTS);
     passwordHelp.classList.remove("is-visible");
-    showWelcome(account, { required: false, accepted: true, version: "preview" });
+    showWelcome(account, { required: true, accepted: false, version: "1.0" });
     return;
   }
   try {
@@ -3103,7 +3108,7 @@ function renderOffers(editing = false) {
       return;
     }
     const row = document.createElement("section"); row.className = "offers-editor-row"; row.dataset.offerId = offer.id;
-    row.innerHTML = `<input class="offers-editor-title" aria-label="Название раздела"><textarea class="offers-editor-copy" rows="5" aria-label="Содержимое"></textarea><div><button data-offer-up type="button">↑</button><button data-offer-down type="button">↓</button><button data-offer-delete type="button">УДАЛИТЬ</button></div>`;
+    row.innerHTML = `<input class="offers-editor-title" aria-label="Название раздела"><div class="offers-editor-toolbar"><button data-offer-bold type="button" title="Жирный текст"><strong>B</strong></button></div><textarea class="offers-editor-copy" rows="7" aria-label="Содержимое"></textarea><div class="offers-editor-row-actions"><button data-offer-up type="button">↑</button><button data-offer-down type="button">↓</button><button data-offer-delete type="button">УДАЛИТЬ</button></div>`;
     row.querySelector("input").value = offer.title; row.querySelector("textarea").value = offer.content || ""; host.appendChild(row);
   });
   if (editing) {
@@ -3121,6 +3126,7 @@ function openOffers({ push = true } = {}) {
 }
 $("#offersButton")?.addEventListener("click", openOffers);
 $("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
+$("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
 $("#offersEdit")?.addEventListener("click", () => renderOffers(true));
 $("#offersContent")?.addEventListener("click", (event) => {
   const rows = [...$("#offersContent").querySelectorAll(".offers-editor-row")];
@@ -3138,6 +3144,15 @@ $("#offersContent")?.addEventListener("click", (event) => {
     return;
   }
   const index = rows.indexOf(row);
+  if (event.target.closest("[data-offer-bold]")) {
+    const input = row.querySelector("textarea");
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const selected = input.value.slice(start, end) || "жирный текст";
+    input.setRangeText(`<strong>${selected}</strong>`, start, end, "select");
+    input.focus();
+    return;
+  }
   const data = rows.map((item) => ({ id: item.dataset.offerId, title: item.querySelector("input").value, content: item.querySelector("textarea").value }));
   if (event.target.closest("[data-offer-delete]")) data.splice(index, 1);
   if (event.target.closest("[data-offer-up]") && index > 0) [data[index - 1], data[index]] = [data[index], data[index - 1]];
@@ -3146,21 +3161,35 @@ $("#offersContent")?.addEventListener("click", (event) => {
 });
 
 async function openConsentsFor(account) {
+  if (IS_GITHUB_PREVIEW) {
+    const acceptedAt = "2026-10-08T12:00:00Z";
+    const demo = ["personal_data", "agreement", "age_18"].map((documentType, index) => ({ id: `preview-consent-${index + 1}`, documentType, version: "1.0", accepted: true, acceptedAt }));
+    renderConsentRecords(demo);
+    return;
+  }
   const { response, body } = await apiRequest(`/accounts/${account.id}/consents`);
   if (!response.ok) return showNotice("НЕ УДАЛОСЬ ЗАГРУЗИТЬ СОГЛАСИЯ", "error");
+  renderConsentRecords(body.consents);
+}
+function renderConsentRecords(consents) {
   const names = { privacy: "Политика персональных данных", personal_data: "Согласие на обработку данных", agreement: "Пользовательское соглашение", age_18: "Подтверждение 18+" };
-  $("#consentsAdminList").innerHTML = body.consents.length ? body.consents.map((item) => `<article class="consent-record"><strong>${names[item.documentType] || item.documentType}</strong><span>Версия ${item.version}</span><span>${item.accepted ? "Принято" : "Не принято"}</span><time>${new Date(item.acceptedAt).toLocaleString("ru-RU")}</time><small>ID: ${item.id}</small></article>`).join("") : "<p>Согласия пока не зафиксированы.</p>";
+  $("#consentsAdminList").innerHTML = consents.length ? consents.map((item) => `<article class="consent-record"><strong>${names[item.documentType] || item.documentType}</strong><span>Версия ${item.version}</span><span>${item.accepted ? "Принято" : "Не принято"}</span><time>${new Date(item.acceptedAt).toLocaleString("ru-RU")}</time><small>ID: ${item.id}</small></article>`).join("") : "<p>Согласия пока не зафиксированы.</p>";
   $("#consentsAdminLayer").classList.add("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "false");
 }
 $("#consentsAdminClose")?.addEventListener("click", () => { $("#consentsAdminLayer").classList.remove("is-visible"); $("#consentsAdminLayer").setAttribute("aria-hidden", "true"); });
 
 async function openArchive() {
-  const { response, body } = await apiRequest("/accounts?archived=true");
-  if (!response.ok) return showNotice("НЕ УДАЛОСЬ ОТКРЫТЬ АРХИВ", "error");
+  let accounts;
+  if (IS_GITHUB_PREVIEW) accounts = githubPreviewArchive;
+  else {
+    const { response, body } = await apiRequest("/accounts?archived=true");
+    if (!response.ok) return showNotice("НЕ УДАЛОСЬ ОТКРЫТЬ АРХИВ", "error");
+    accounts = body.accounts;
+  }
   const host = $("#archiveList"); host.innerHTML = "";
-  body.accounts.forEach((account) => {
+  accounts.forEach((account) => {
     const card = document.createElement("article"); card.className = "archive-card";
-    card.innerHTML = `<div><strong></strong><span class="archive-telegram"></span><span class="archive-login"></span><span class="archive-role"></span><small class="archive-dates"></small><small class="archive-id"></small></div><div class="archive-card-actions"><button data-archive-consents type="button">СОГЛАСИЯ</button><button data-archive-delete type="button">УДАЛИТЬ НАВСЕГДА</button></div>`;
+    card.innerHTML = `<div><strong></strong><span class="archive-telegram"></span><span class="archive-login"></span><span class="archive-role"></span><small class="archive-dates"></small><small class="archive-id"></small></div><div class="archive-card-actions"><button data-archive-restore type="button">ВОССТАНОВИТЬ</button><button data-archive-consents type="button">СОГЛАСИЯ</button><button data-archive-delete type="button">УДАЛИТЬ НАВСЕГДА</button></div>`;
     card.querySelector("strong").textContent = accountDisplayName(account);
     card.querySelector(".archive-telegram").textContent = account.telegram || "Telegram";
     card.querySelector(".archive-login").textContent = `Логин: ${account.login}`;
@@ -3168,17 +3197,31 @@ async function openArchive() {
     card.querySelector(".archive-dates").textContent = `Создан: ${new Date(account.createdAt).toLocaleString("ru-RU")} · В архиве: ${new Date(account.archivedAt).toLocaleString("ru-RU")}`;
     card.querySelector(".archive-id").textContent = `ID: ${account.id}`;
     card.querySelector("[data-archive-consents]").addEventListener("click", () => openConsentsFor(account));
+    card.querySelector("[data-archive-restore]").addEventListener("click", async () => {
+      if (IS_GITHUB_PREVIEW) {
+        githubPreviewArchive = githubPreviewArchive.filter((item) => item.id !== account.id);
+        accountStore.push(normalizeAccount({ ...account, archivedAt: null, isActive: true }));
+        renderAccounts(); openArchive(); showNotice("АККАУНТ ВОССТАНОВЛЕН", "success"); return;
+      }
+      const result = await apiRequest(`/archive/${account.id}/restore`, { method: "POST" });
+      if (result.response.ok) { accountStore.push(normalizeAccount(result.body.account)); renderAccounts(); openArchive(); showNotice("АККАУНТ ВОССТАНОВЛЕН", "success"); }
+    });
     card.querySelector("[data-archive-delete]").addEventListener("click", async () => {
       if (!confirm(`Удалить аккаунт «${accountDisplayName(account)}» навсегда? Это действие нельзя отменить.`)) return;
+      if (IS_GITHUB_PREVIEW) { githubPreviewArchive = githubPreviewArchive.filter((item) => item.id !== account.id); card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); return; }
       const result = await apiRequest(`/archive/${account.id}`, { method: "DELETE" });
       if (result.response.ok) { card.remove(); showNotice("АККАУНТ УДАЛЁН НАВСЕГДА", "success"); }
     }); host.appendChild(card);
   });
-  if (!body.accounts.length) host.innerHTML = "<p>Архив пуст.</p>";
-  $("#archiveLayer").classList.add("is-visible"); $("#archiveLayer").setAttribute("aria-hidden", "false");
+  if (!accounts.length) host.innerHTML = "<p>Архив пуст.</p>";
 }
-$("#archiveButton")?.addEventListener("click", openArchive);
-$("#archiveClose")?.addEventListener("click", () => { $("#archiveLayer").classList.remove("is-visible"); $("#archiveLayer").setAttribute("aria-hidden", "true"); });
+$$('[data-accounts-view]').forEach((button) => button.addEventListener('click', () => {
+  const view = button.dataset.accountsView;
+  $$('[data-accounts-view]').forEach((item) => item.classList.toggle('is-current', item === button));
+  $$('[data-accounts-panel]').forEach((panel) => panel.classList.toggle('is-current', panel.dataset.accountsPanel === view));
+  $("#createAccountButton").hidden = view === "archive";
+  if (view === "archive") openArchive();
+}));
 
 const documentsLayer = $("#documentsLayer");
 $("#documentsButton")?.addEventListener("click", () => {
@@ -3203,14 +3246,18 @@ $("#consentSubmit")?.addEventListener("click", async () => {
   if (!consentInputs.every((input) => input?.checked) || !pendingAuthenticatedAccount) return;
   const button = $("#consentSubmit");
   button.disabled = true;
-  const { response, body } = await apiRequest("/consents/accept", {
-    method: "POST",
-    body: JSON.stringify({ version: pendingConsentState?.version || "1.0", privacy: true, personalData: true, agreement: true, age18: true }),
-  });
-  if (!response.ok) {
-    $("#consentError").textContent = "Не удалось сохранить согласие. Проверьте соединение и попробуйте снова.";
-    button.disabled = false;
-    return;
+  let body = { consent: { required: false, accepted: true, version: pendingConsentState?.version || "1.0" } };
+  if (!IS_GITHUB_PREVIEW) {
+    const result = await apiRequest("/consents/accept", {
+      method: "POST",
+      body: JSON.stringify({ version: pendingConsentState?.version || "1.0", privacy: true, personalData: true, agreement: true, age18: true }),
+    });
+    if (!result.response.ok) {
+      $("#consentError").textContent = "Не удалось сохранить согласие. Проверьте соединение и попробуйте снова.";
+      button.disabled = false;
+      return;
+    }
+    body = result.body;
   }
   const account = pendingAuthenticatedAccount;
   pendingAuthenticatedAccount = null;
