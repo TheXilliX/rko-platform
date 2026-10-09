@@ -4337,6 +4337,48 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   }
 }
 
+/* Final control positioning hotfix. */
+@media (min-width: 1021px) {
+  .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; align-self: start !important; margin-top: 0 !important; }
+  .lesson-reader > .reader-navigation { position: static !important; align-self: start !important; clear: both !important; margin-top: 70px !important; transform: none !important; }
+}
+@media (max-width: 1020px) {
+  .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; }
+  .lesson-reader > .reader-navigation { position: static !important; margin-top: 48px !important; transform: none !important; }
+}
+
+/* Keep lesson controls in their intended places: the back control stays
+   pinned to the top of the reader, while previous/next follows the content. */
+@media (min-width: 1021px) {
+  .lesson-reader > .reader-back {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    align-self: start !important;
+    margin-top: 0 !important;
+  }
+  .lesson-reader > .reader-navigation {
+    position: static !important;
+    align-self: start !important;
+    clear: both !important;
+    margin-top: 70px !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 1020px) {
+  .lesson-reader > .reader-back {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+  }
+  .lesson-reader > .reader-navigation {
+    position: static !important;
+    margin-top: 48px !important;
+    transform: none !important;
+  }
+}
+
 /* Hotfix: keep the reader as a wide lesson column with the outline beside it.
    Several older responsive overrides could collapse the whole reader into the
    outline column on desktop.  These rules are intentionally last so the
@@ -4502,6 +4544,16 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     margin-left: 0;
     margin-right: auto;
   }
+}
+
+/* Final control positioning hotfix. */
+@media (min-width: 1021px) {
+  .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; align-self: start !important; margin-top: 0 !important; }
+  .lesson-reader > .reader-navigation { position: static !important; align-self: start !important; clear: both !important; margin-top: 70px !important; transform: none !important; }
+}
+@media (max-width: 1020px) {
+  .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; }
+  .lesson-reader > .reader-navigation { position: static !important; margin-top: 48px !important; transform: none !important; }
 }
 
 /* Hotfix final override: restore the wide learner lesson column. */
