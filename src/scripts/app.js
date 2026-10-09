@@ -79,6 +79,7 @@ const lessonPreviewButton = $("#lessonPreviewButton");
 const lessonPreviewLayer = $("#lessonPreviewLayer");
 const lessonPreviewClose = $("#lessonPreviewClose");
 const lessonPreviewBack = $("#lessonPreviewBack");
+const lessonPreviewProgram = $("#lessonPreviewProgram");
 const lessonPreviewTitle = $("#lessonPreviewTitle");
 const lessonPreviewContent = $("#lessonPreviewContent");
 const previousLesson = $("#previousLesson");
@@ -2337,6 +2338,7 @@ async function openLessonPreview() {
   if (!editorDraft || !lessonComposer) return;
   lessonPreviewTitle.textContent = lessonNameInput.value.trim() || "Без названия";
   lessonPreviewContent.innerHTML = `<section class="reader-block reader-block--text lesson-document">${lessonComposer.getHTML()}</section>`;
+  lessonPreviewProgram.replaceChildren(...[...readerProgram.children].map((node) => node.cloneNode(true)));
   lessonPreviewLayer.classList.add("is-visible");
   lessonPreviewLayer.setAttribute("aria-hidden", "false");
   await hydrateDocumentAssets(lessonPreviewContent, getAsset, Boolean(editorDraft.allowDownloads));
