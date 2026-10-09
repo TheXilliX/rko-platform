@@ -3917,6 +3917,10 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
 /* Desktop reader width: this final override intentionally comes after all
    responsive reader rules so the lesson cannot be narrowed by legacy styles. */
 @media (min-width: 1280px) {
+  .workspace { width: min(92%, 1600px) !important; }
+  .learning-shell > .display-title,
+  .learning-shell > .learning-actions,
+  .learning-shell > .course-browser { width: 100%; max-width: none; }
   .lesson-reader {
     display: grid !important;
     grid-template-columns: minmax(0, 1080px) minmax(220px, 260px) !important;
