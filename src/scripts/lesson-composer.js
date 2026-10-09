@@ -21,7 +21,9 @@ const icons = {
   text: '<span>Aa</span>', format:'<b>B</b>',
   list: svg('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/>'),
   table: svg('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M10 3v18"/>'),
-  link: svg('<path d="m10 14 4-4m-6 6-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"/>'),
+  // Symmetric link mark: two horizontal rounded links joined on the same baseline.
+  // The previous diagonal path read as visually tilted at the toolbar size.
+  link: svg('<path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8"/>'),
   media: svg('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-5 5 6"/>'),
   align: svg('<path d="M3 5h18M3 10h12M3 15h18M3 20h12"/>'),
 };
