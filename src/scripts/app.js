@@ -2336,7 +2336,7 @@ function renderEditorBlocks() {
 async function openLessonPreview() {
   if (!editorDraft || !lessonComposer) return;
   lessonPreviewTitle.textContent = lessonNameInput.value.trim() || "Без названия";
-  lessonPreviewContent.innerHTML = `<section class="lesson-block lesson-block--text lesson-document">${lessonComposer.getHTML()}</section>`;
+  lessonPreviewContent.innerHTML = `<section class="reader-block reader-block--text lesson-document">${lessonComposer.getHTML()}</section>`;
   lessonPreviewLayer.classList.add("is-visible");
   lessonPreviewLayer.setAttribute("aria-hidden", "false");
   await hydrateDocumentAssets(lessonPreviewContent, getAsset, Boolean(editorDraft.allowDownloads));
