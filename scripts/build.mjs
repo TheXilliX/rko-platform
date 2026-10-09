@@ -8,6 +8,9 @@ const dist = resolve(root, "dist");
 await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 await cp(resolve(root, "index.html"), resolve(dist, "index.html"));
+// GitHub Pages serves 404.html for direct deep links. Keep the SPA shell there
+// as well so refreshing /lesson/... or /editor/... stays inside the app.
+await cp(resolve(root, "index.html"), resolve(dist, "404.html"));
 await cp(resolve(root, "src"), resolve(dist, "src"), { recursive: true });
 await cp(resolve(root, "public"), resolve(dist, "public"), { recursive: true });
 await cp(resolve(root, "favicon-v2h.svg"), resolve(dist, "favicon-v2h.svg"));
