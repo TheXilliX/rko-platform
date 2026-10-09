@@ -59,14 +59,15 @@
 .lesson-document blockquote[style*="color"] {color:inherit}
 .lesson-preview-layer {position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:28px;background:#29292940;opacity:0;pointer-events:none;transition:opacity .22s ease}
 .lesson-preview-layer.is-visible {opacity:1;pointer-events:auto}
-.lesson-preview-card {position:relative;width:min(900px,100%);max-height:min(88vh,900px);overflow:auto;padding:38px 48px 52px;border:1px solid #e5e2db;border-radius:22px;background:#fffefa;box-shadow:0 20px 70px #29292926;transform:translateY(8px);transition:transform .22s ease}
+.lesson-preview-card {position:relative;width:min(1120px,100%);max-height:min(92vh,980px);overflow:auto;padding:34px 48px 52px;border:1px solid #e5e2db;border-radius:22px;background:#fffefa;box-shadow:0 20px 70px #29292926;transform:translateY(8px);transition:transform .22s ease}
 .lesson-preview-layer.is-visible .lesson-preview-card {transform:none}
-.lesson-preview-card .service-label {margin:0 0 18px;color:#8d8b83}
-.lesson-preview-card h2 {margin:0 0 30px;font:800 clamp(30px,5vw,56px)/1.05 Arial,sans-serif;letter-spacing:-.04em;color:#292929}
-.lesson-preview-content {font:17px/1.75 Arial,sans-serif;color:#292929}
-.lesson-preview-content .lesson-document {max-width:none}
+.lesson-preview-reader {inset:auto;display:block;position:relative;max-width:1120px}
+.lesson-preview-reader .reader-title {margin-top:28px}
+.lesson-preview-reader .reader-content {margin-top:42px;max-width:780px}
+.lesson-preview-reader .reader-navigation {max-width:780px}
+.lesson-preview-reader .lesson-preview-back {position:relative;top:auto;left:auto;display:inline-flex}
 .lesson-preview-close {position:absolute;top:18px;right:20px;width:38px;height:38px;border:1px solid #d9d5cc;border-radius:50%;background:transparent;color:#292929;font-size:25px;line-height:1;cursor:pointer}
-@media(max-width:560px){.lesson-preview-card{padding:30px 20px 34px}.lesson-preview-content{font-size:16px}}
+@media(max-width:560px){.lesson-preview-card{padding:30px 20px 34px}.lesson-preview-reader .reader-content{margin-top:30px}}
 .lesson-document pre {background:#f2f0eb;border-radius:10px;padding:16px;overflow:auto;white-space:pre}
 .lesson-document code {background:#f2f0eb;font-size:.9em}
 .lesson-document a {color:#a86310;text-decoration:underline;text-underline-offset:3px}
