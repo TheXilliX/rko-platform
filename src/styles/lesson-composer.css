@@ -6,6 +6,9 @@
 .editor-page .editor-sidebar {padding:24px;min-width:0}
 .editor-page .editor-actions {display:flex;flex-direction:column;align-items:stretch;gap:12px}
 .editor-page .editor-actions button {width:100%;padding:12px 4px;text-align:center}
+.editor-preview-button {display:block;margin:18px 0 0 auto;padding:11px 18px;border:1px solid #d9d5cc;border-radius:999px;background:#fffefa;color:#292929;font:700 11px/1 Arial,sans-serif;letter-spacing:.06em;cursor:pointer;transition:background .2s,color .2s,transform .2s}
+.editor-preview-button:hover {background:#fff0d9;color:#b86b0a}
+.editor-preview-button:active {transform:scale(.97)}
 .editor-page .editor-title {font-size:clamp(30px,4vw,52px);line-height:1.05;letter-spacing:-.055em}
 .editor-page .lesson-name-field {margin-bottom:24px;display:block;padding:0;border:0}
 .editor-page .lesson-name-field>span {display:block;color:#8d8b83;font-size:11px;letter-spacing:.08em;margin-bottom:8px}
@@ -52,7 +55,18 @@
 .lesson-document ul,.lesson-document ol {padding-left:26px;margin:12px 0 20px;text-align:left;list-style-position:outside}
 .lesson-document li {display:list-item;text-align:left;padding:0 0 0 4px;margin:5px 0}
 .lesson-document li p {margin:0}
-.lesson-document blockquote {border-left:3px solid #d7b585;margin:22px 0;padding:3px 0 3px 22px;color:#68665e}
+.lesson-document blockquote {border-left:3px solid #ffae42;margin:22px 0;padding:3px 0 3px 22px;color:#292929}
+.lesson-document blockquote[style*="color"] {color:inherit}
+.lesson-preview-layer {position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:28px;background:#29292940;opacity:0;pointer-events:none;transition:opacity .22s ease}
+.lesson-preview-layer.is-visible {opacity:1;pointer-events:auto}
+.lesson-preview-card {position:relative;width:min(900px,100%);max-height:min(88vh,900px);overflow:auto;padding:38px 48px 52px;border:1px solid #e5e2db;border-radius:22px;background:#fffefa;box-shadow:0 20px 70px #29292926;transform:translateY(8px);transition:transform .22s ease}
+.lesson-preview-layer.is-visible .lesson-preview-card {transform:none}
+.lesson-preview-card .service-label {margin:0 0 18px;color:#8d8b83}
+.lesson-preview-card h2 {margin:0 0 30px;font:800 clamp(30px,5vw,56px)/1.05 Arial,sans-serif;letter-spacing:-.04em;color:#292929}
+.lesson-preview-content {font:17px/1.75 Arial,sans-serif;color:#292929}
+.lesson-preview-content .lesson-document {max-width:none}
+.lesson-preview-close {position:absolute;top:18px;right:20px;width:38px;height:38px;border:1px solid #d9d5cc;border-radius:50%;background:transparent;color:#292929;font-size:25px;line-height:1;cursor:pointer}
+@media(max-width:560px){.lesson-preview-card{padding:30px 20px 34px}.lesson-preview-content{font-size:16px}}
 .lesson-document pre {background:#f2f0eb;border-radius:10px;padding:16px;overflow:auto;white-space:pre}
 .lesson-document code {background:#f2f0eb;font-size:.9em}
 .lesson-document a {color:#a86310;text-decoration:underline;text-underline-offset:3px}
