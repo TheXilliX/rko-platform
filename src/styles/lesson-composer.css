@@ -62,12 +62,17 @@
 .lesson-document figure {margin:24px 0}
 .lesson-document figure>a {display:block;font-size:14px}
 .lesson-document hr {border:0;border-top:1px solid #d9d5cc;margin:30px 0}
-.lesson-document table {border-collapse:collapse;table-layout:fixed;width:100%;margin:20px 0;overflow:hidden}
+.lesson-document .tableWrapper {border:1px solid #dcd8ce;border-radius:14px;overflow:hidden;margin:20px 0}
+.lesson-document table {border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;margin:0;overflow:hidden}
 .lesson-document td,.lesson-document th {position:relative;min-width:50px;border:1px solid #dcd8ce;padding:10px 12px;vertical-align:top;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:400}
+.lesson-document tr:first-child th:first-child,.lesson-document tr:first-child td:first-child {border-top-left-radius:13px}
+.lesson-document tr:first-child th:last-child,.lesson-document tr:first-child td:last-child {border-top-right-radius:13px}
+.lesson-document tr:last-child td:first-child,.lesson-document tr:last-child th:first-child {border-bottom-left-radius:13px}
+.lesson-document tr:last-child td:last-child,.lesson-document tr:last-child th:last-child {border-bottom-right-radius:13px}
 .lesson-document th {background:#f0eee6;font-weight:600}
 .lesson-document td p,.lesson-document th p {margin:0}
 .lesson-document .selectedCell:after {content:'';position:absolute;inset:0;pointer-events:none;background:#ffae4233}
-.lesson-document .tableWrapper {overflow-x:auto}
+.lesson-document .tableWrapper {overflow:auto;border-radius:14px}
 .lesson-document [data-type=taskList] {list-style:none;padding-left:0}
 .lesson-document [data-type=taskItem] {display:flex;gap:10px;padding:0}
 .lesson-document [data-type=taskItem]>label {flex:0 0 auto;user-select:none;padding-top:3px}
