@@ -28,7 +28,7 @@
       isolation: isolate;
       overflow: hidden;
       background-color: var(--milk);
-      background-image: url('../../public/rko-background.png');
+      background-image: none;
       background-repeat: no-repeat;
       background-position: center top;
       background-size: cover;
