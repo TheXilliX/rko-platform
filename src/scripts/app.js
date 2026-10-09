@@ -2334,13 +2334,21 @@ async function saveEditorLesson() {
   editorDraft.allowWhenBlocked = Boolean(allowWhenBlocked?.checked);
   const draftFound = findNode(draftStructure, editorLessonId);
   const persisted = findNode(savedStructure, editorLessonId);
-  if (!draftFound || !persisted) {
-    showNotice("СНАЧАЛА СОХРАНИ СТРУКТУРУ", "error");
+  if (!draftFound) {
+    showNotice("УРОК НЕ НАЙДЕН", "error");
     return false;
   }
   const snapshot = clone(editorDraft);
-  const nextStructure = clone(savedStructure);
-  Object.assign(findNode(nextStructure, editorLessonId).item, snapshot);
+  const nextStructure = clone(persisted ? savedStructure : draftStructure);
+  const nextNode = findNode(nextStructure, editorLessonId);
+  if (nextNode) Object.assign(nextNode.item, snapshot);
+  else {
+    const draftNode = findNode(draftStructure, editorLessonId);
+    if (!draftNode) return false;
+    const parent = findNode(nextStructure, draftNode.parent?.id);
+    if (!parent?.item?.children) return false;
+    parent.item.children.splice(draftNode.siblings.findIndex(item => item.id === editorLessonId), 0, snapshot);
+  }
   saveLesson.disabled = true;
   try {
     if (backendConnected) {
@@ -2356,7 +2364,7 @@ async function saveEditorLesson() {
     return false;
   }
   Object.assign(draftFound.item, snapshot);
-  Object.assign(persisted.item, snapshot);
+  if (persisted) Object.assign(persisted.item, snapshot);
   baselineIds = collectIds(savedStructure);
   editorOriginal = snapshot;
   renderStructure();
