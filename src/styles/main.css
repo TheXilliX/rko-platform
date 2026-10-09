@@ -3897,6 +3897,42 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   }
 }
 
+/* Unified lesson editor surface and media polish. */
+.lesson-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 22px 0 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,.55);
+}
+.lesson-editor-toolbar button {
+  width: 34px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 600 .78rem/1 "DM Mono", monospace;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.lesson-editor-toolbar button:hover { background: rgba(255,174,66,.18); color: var(--text-primary); }
+.lesson-editor-toolbar button:active { transform: scale(.92); }
+.lesson-block { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding-left: 0; padding-right: 0; }
+.lesson-block .block-label, .lesson-block .block-drag, .lesson-block .block-delete { display: none; }
+.lesson-block .block-editor { width: 100%; }
+.lesson-block .rich-text { min-height: 72px; }
+.lesson-block--image .block-preview,
+.reader-content img { border-radius: 16px; overflow: hidden; }
+.reader-content table, .rich-text table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: .95em; }
+.reader-content th, .reader-content td, .rich-text th, .rich-text td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+.reader-content th, .rich-text th { background: rgba(47,125,87,.08); font-weight: 700; }
+.reader-content table { overflow: hidden; border-radius: 12px; }
+
 /* Final placement for the dashboard actions and offers controls. */
 @media (min-width: 721px) {
   .learning-actions {
