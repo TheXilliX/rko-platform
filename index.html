@@ -380,11 +380,12 @@
     </section>
 
     <div class="lesson-preview-layer" id="lessonPreviewLayer" aria-hidden="true">
-      <section class="lesson-preview-card" role="dialog" aria-modal="true" aria-labelledby="lessonPreviewTitle">
+      <section class="lesson-preview-card lesson-preview-reader" role="dialog" aria-modal="true" aria-labelledby="lessonPreviewTitle">
         <button class="lesson-preview-close" id="lessonPreviewClose" type="button" aria-label="Закрыть">×</button>
-        <p class="service-label">[ ПРЕДПРОСМОТР ]</p>
-        <h2 id="lessonPreviewTitle"></h2>
-        <div class="lesson-preview-content" id="lessonPreviewContent"></div>
+        <button class="reader-back lesson-preview-back" id="lessonPreviewBack" type="button">← НАЗАД</button>
+        <h2 class="reader-title" id="lessonPreviewTitle"></h2>
+        <div class="reader-content lesson-preview-content" id="lessonPreviewContent"></div>
+        <div class="reader-navigation" aria-label="Навигация по уроку"><button class="reader-nav-button" type="button" disabled>← НАЗАД</button><div class="lesson-progress" aria-hidden="true"></div><button class="reader-nav-button" type="button" disabled>ДАЛЕЕ →</button></div>
       </section>
     </div>
 
