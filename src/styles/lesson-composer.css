@@ -114,3 +114,14 @@
 @media(max-width:1000px){.editor-page .editor-workspace{width:calc(100% - 40px)}.editor-page .editor-layout{grid-template-columns:minmax(0,1fr);gap:24px}.editor-page .editor-sidebar{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;min-width:0}.editor-page .editor-actions{grid-column:1/-1}.composer-toolbar{padding:16px;gap:8px}}
 @media(max-width:560px){.editor-page .editor-workspace{width:calc(100% - 24px)}.editor-page .editor-title{font-size:30px}.editor-page .lesson-name-field input{font-size:22px}.composer-toolbar{padding:12px;gap:8px}.composer-tools>button{width:34px;height:36px;font-size:21px}.composer-tools>button svg{width:21px;height:21px}.composer-tools{gap:0;padding:3px}.composer-content{padding:16px 18px 30px}.lesson-document{font-size:16px}.lesson-document h1{font-size:29px}.lesson-document h2{font-size:25px}.lesson-document h3{font-size:22px}.editor-page .editor-sidebar{grid-template-columns:1fr}.composer-menu{max-width:calc(100vw - 50px)}.lesson-document td,.lesson-document th{padding:8px}.lesson-document .document-callout{padding-left:44px}.lesson-document .document-callout:before{left:14px}}
 @media(prefers-reduced-motion:reduce){.composer-menu{animation:none}.composer-tools>button{transition:none}}
+
+/* Reader hotfix: use a real vertical document flow so lesson navigation can
+   never overlap the lesson body. The outline remains pinned in the right rail. */
+@media(min-width:1181px){
+  .lesson-reader{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:0!important;}
+  .lesson-reader>.reader-back,.lesson-reader>.reader-title,.lesson-reader>.reader-content,.lesson-reader>.reader-navigation{width:min(1080px,calc(100% - 328px))!important;max-width:1080px!important;flex:0 0 auto!important;grid-column:auto!important;grid-row:auto!important;margin-left:0!important;margin-right:0!important;}
+  .lesson-reader>.reader-back{align-self:center!important;position:sticky!important;top:0!important;margin-bottom:18px!important;}
+  .lesson-reader>.reader-content{margin-top:48px!important;}
+  .lesson-reader>.reader-navigation{display:grid!important;position:static!important;margin-top:70px!important;clear:none!important;transform:none!important;}
+  .lesson-reader>.reader-program{position:absolute!important;right:0!important;top:18px!important;width:280px!important;max-width:280px!important;margin:0!important;grid-column:auto!important;grid-row:auto!important;}
+}
