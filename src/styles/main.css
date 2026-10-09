@@ -3339,6 +3339,23 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   }
 }
 
+/* Give desktop lessons the same generous reading width as the editor. */
+@media (min-width: 1021px) {
+  .lesson-reader {
+    grid-template-columns: minmax(0, 1080px) minmax(220px, 260px);
+    width: min(100%, 1430px);
+    max-width: 1430px;
+    column-gap: clamp(28px, 3.4vw, 56px);
+  }
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    max-width: 1080px;
+  }
+  .reader-content { width: min(100%, 1080px); }
+}
+
 .offers-edit-stack { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
 .offers-edit,
 .offers-save { transition: color .32s ease, background-color .32s ease, border-color .32s ease, transform .18s cubic-bezier(.22,1,.36,1), filter .32s ease; }
