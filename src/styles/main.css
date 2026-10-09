@@ -4286,6 +4286,126 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     margin-right: auto;
   }
 
+/* Hotfix final override: restore the wide learner lesson column. */
+@media (min-width: 1181px) {
+  .workspace { width: min(92vw, 1600px) !important; max-width: 1600px !important; }
+  .lesson-reader {
+    position: absolute !important;
+    inset: clamp(64px, 8vh, 92px) 0 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, min(1080px, calc(100% - 340px))) minmax(240px, 280px) !important;
+    align-items: start !important;
+    justify-content: center !important;
+    gap: clamp(28px, 3vw, 48px) !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 0 90px !important;
+    overflow-x: hidden !important;
+  }
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    grid-column: 1 !important;
+    width: 100% !important;
+    max-width: 1080px !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .lesson-reader > .reader-back {
+    justify-self: start !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    margin-bottom: 18px !important;
+  }
+  .lesson-reader > .reader-title { overflow-wrap: anywhere !important; text-align: center !important; }
+  .lesson-reader > .reader-content { margin-top: 48px !important; text-align: center !important; }
+  .lesson-reader .reader-program {
+    grid-column: 2 !important;
+    grid-row: 1 / span 4 !important;
+    position: sticky !important;
+    top: 18px !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    justify-self: stretch !important;
+  }
+}
+
+/* Hotfix: keep the reader as a wide lesson column with the outline beside it.
+   Several older responsive overrides could collapse the whole reader into the
+   outline column on desktop.  These rules are intentionally last so the
+   learner view has one stable desktop geometry. */
+@media (min-width: 1181px) {
+  .workspace {
+    width: min(92vw, 1600px) !important;
+    max-width: 1600px !important;
+  }
+
+  .lesson-reader {
+    position: absolute !important;
+    inset: clamp(64px, 8vh, 92px) 0 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, min(1080px, calc(100% - 340px))) minmax(240px, 280px) !important;
+    align-items: start !important;
+    justify-content: center !important;
+    gap: clamp(28px, 3vw, 48px) !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 0 90px !important;
+    overflow-x: hidden !important;
+  }
+
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    grid-column: 1 !important;
+    width: 100% !important;
+    max-width: 1080px !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .lesson-reader > .reader-back {
+    justify-self: start !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    margin-bottom: 18px !important;
+  }
+
+  .lesson-reader > .reader-title {
+    overflow-wrap: anywhere !important;
+    text-align: center !important;
+  }
+
+  .lesson-reader > .reader-content {
+    margin-top: 48px !important;
+    text-align: center !important;
+  }
+
+  .lesson-reader .reader-program {
+    grid-column: 2 !important;
+    grid-row: 1 / span 4 !important;
+    position: sticky !important;
+    top: 18px !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    justify-self: stretch !important;
+  }
+}
+
   .lesson-reader > .reader-title {
     overflow-wrap: anywhere;
   }
@@ -4381,6 +4501,57 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
     max-width: 100%;
     margin-left: 0;
     margin-right: auto;
+  }
+}
+
+/* Hotfix final override: restore the wide learner lesson column. */
+@media (min-width: 1181px) {
+  .workspace { width: min(92vw, 1600px) !important; max-width: 1600px !important; }
+  .lesson-reader {
+    position: absolute !important;
+    inset: clamp(64px, 8vh, 92px) 0 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, min(1080px, calc(100% - 340px))) minmax(240px, 280px) !important;
+    align-items: start !important;
+    justify-content: center !important;
+    gap: clamp(28px, 3vw, 48px) !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 0 90px !important;
+    overflow-x: hidden !important;
+  }
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    grid-column: 1 !important;
+    width: 100% !important;
+    max-width: 1080px !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .lesson-reader > .reader-back {
+    justify-self: start !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    margin-bottom: 18px !important;
+  }
+  .lesson-reader > .reader-title { overflow-wrap: anywhere !important; text-align: center !important; }
+  .lesson-reader > .reader-content { margin-top: 48px !important; text-align: center !important; }
+  .lesson-reader .reader-program {
+    grid-column: 2 !important;
+    grid-row: 1 / span 4 !important;
+    position: sticky !important;
+    top: 18px !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    justify-self: stretch !important;
   }
 }
 
