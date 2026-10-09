@@ -6,7 +6,7 @@
 .editor-page .editor-sidebar {padding:24px;min-width:0}
 .editor-page .editor-actions {display:flex;flex-direction:column;align-items:stretch;gap:12px}
 .editor-page .editor-actions button {width:100%;padding:12px 4px;text-align:center}
-.editor-preview-button {display:block;margin:18px 0 0 auto;padding:11px 18px;border:1px solid #d9d5cc;border-radius:999px;background:#fffefa;color:#292929;font:700 11px/1 Arial,sans-serif;letter-spacing:.06em;cursor:pointer;transition:background .2s,color .2s,transform .2s}
+.editor-preview-button {display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 24px;padding:13px 10px;border:1px solid #d9d5cc;border-radius:999px;background:#fffefa;color:#292929;font:700 11px/1 Arial,sans-serif;letter-spacing:.06em;cursor:pointer;transition:background .2s,color .2s,transform .2s}
 .editor-preview-button:hover {background:#fff0d9;color:#b86b0a}
 .editor-preview-button:active {transform:scale(.97)}
 .editor-page .editor-title {font-size:clamp(30px,4vw,52px);line-height:1.05;letter-spacing:-.055em}
