@@ -1,4 +1,5 @@
 /* A single document surface. Toolbar menus never create separate editor cards. */
+.editor-page {overflow-x:hidden}
 .editor-page .editor-workspace {width:min(1240px,calc(100% - 64px));max-width:1240px;margin:0 auto;padding-bottom:80px}
 .editor-page .editor-layout {display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:36px;align-items:start}
 .editor-page .editor-main {min-width:0;border:0;box-shadow:none;background:none;border-radius:0}
@@ -56,6 +57,7 @@
 .lesson-document code {background:#f2f0eb;font-size:.9em}
 .lesson-document a {color:#a86310;text-decoration:underline;text-underline-offset:3px}
 .lesson-document img,.lesson-document video {max-width:100%;height:auto;border-radius:14px}
+.lesson-document figcaption {margin-top:8px;color:#77756e;font:14px/1.45 Arial,sans-serif;text-align:center}
 .lesson-document audio {max-width:100%}
 .lesson-document figure {margin:24px 0}
 .lesson-document figure>a {display:block;font-size:14px}
