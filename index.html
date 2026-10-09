@@ -12,8 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Urbanist:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="./favicon-v2h.svg">
   <link rel="stylesheet" href="./src/styles/main.css?v=20261009-document-2">
-  <link rel="stylesheet" href="./src/styles/lesson-composer.css?v=20261009-document-2">
   <link rel="stylesheet" href="./src/styles/conifer-cult.css?v=20261003-lesson-reader-3">
+  <link rel="stylesheet" href="./src/styles/lesson-composer.css?v=20261009-editor-4">
 </head>
 <body>
   <div class="app" id="app">
@@ -345,6 +345,7 @@
               <div id="lessonEditorToolbar" aria-label="Инструменты редактора"></div>
               <div id="lessonBlocks" class="composer-content"></div>
             </div>
+            <button class="editor-preview-button" id="lessonPreviewButton" type="button">◉ ПРЕДПРОСМОТР</button>
           </section>
 
           <aside class="editor-sidebar">
@@ -377,6 +378,15 @@
         </div>
       </main>
     </section>
+
+    <div class="lesson-preview-layer" id="lessonPreviewLayer" aria-hidden="true">
+      <section class="lesson-preview-card" role="dialog" aria-modal="true" aria-labelledby="lessonPreviewTitle">
+        <button class="lesson-preview-close" id="lessonPreviewClose" type="button" aria-label="Закрыть">×</button>
+        <p class="service-label">[ ПРЕДПРОСМОТР ]</p>
+        <h2 id="lessonPreviewTitle"></h2>
+        <div class="lesson-preview-content" id="lessonPreviewContent"></div>
+      </section>
+    </div>
 
     <div class="notice" id="notice" role="status" aria-live="polite"></div>
 
