@@ -1,7 +1,7 @@
 /* A single document surface. Toolbar menus never create separate editor cards. */
 .editor-page {overflow-x:hidden}
-.editor-page .editor-workspace {width:min(1240px,calc(100% - 64px));max-width:1240px;margin:0 auto;padding-bottom:80px}
-.editor-page .editor-layout {display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:36px;align-items:start}
+.editor-page .editor-workspace {width:min(1240px,calc(100% - 64px));max-width:1240px;margin:0 auto;padding-bottom:80px;box-sizing:border-box;min-width:0}
+.editor-page .editor-layout {display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:36px;align-items:start;min-width:0}
 .editor-page .editor-main {min-width:0;border:0;box-shadow:none;background:none;border-radius:0}
 .editor-page .editor-sidebar {padding:24px;min-width:0}
 .editor-page .editor-actions {display:flex;flex-direction:column;align-items:stretch;gap:12px}
@@ -95,6 +95,6 @@
 .reader-block.lesson-document {overflow-x:auto}
 @keyframes composer-enter {from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media(min-width:1100px){.composer-menu:has(.composer-submenu[open]){width:640px;min-height:370px}.composer-menu:has(.composer-submenu[open])>.composer-menu-item,.composer-menu:has(.composer-submenu[open])>.composer-submenu{width:300px}.composer-submenu[open]>div{position:absolute;left:320px;top:10px;width:300px;margin:0;padding-left:10px;border-left:1px solid #e8e3d9}.composer-submenu[open] .composer-menu-item{min-height:48px}}
-@media(max-width:1000px){.editor-page .editor-workspace{width:calc(100% - 40px)}.editor-page .editor-layout{grid-template-columns:minmax(0,1fr);gap:24px}.editor-page .editor-sidebar{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.editor-page .editor-actions{grid-column:1/-1}.composer-toolbar{padding:16px;gap:8px}}
+@media(max-width:1000px){.editor-page .editor-workspace{width:calc(100% - 40px)}.editor-page .editor-layout{grid-template-columns:minmax(0,1fr);gap:24px}.editor-page .editor-sidebar{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;min-width:0}.editor-page .editor-actions{grid-column:1/-1}.composer-toolbar{padding:16px;gap:8px}}
 @media(max-width:560px){.editor-page .editor-workspace{width:calc(100% - 24px)}.editor-page .editor-title{font-size:30px}.editor-page .lesson-name-field input{font-size:22px}.composer-toolbar{padding:12px;gap:8px}.composer-tools>button{width:34px;height:36px;font-size:21px}.composer-tools>button svg{width:21px;height:21px}.composer-tools{gap:0;padding:3px}.composer-content{padding:16px 18px 30px}.lesson-document{font-size:16px}.lesson-document h1{font-size:29px}.lesson-document h2{font-size:25px}.lesson-document h3{font-size:22px}.editor-page .editor-sidebar{grid-template-columns:1fr}.composer-menu{max-width:calc(100vw - 50px)}.lesson-document td,.lesson-document th{padding:8px}.lesson-document .document-callout{padding-left:44px}.lesson-document .document-callout:before{left:14px}}
 @media(prefers-reduced-motion:reduce){.composer-menu{animation:none}.composer-tools>button{transition:none}}
