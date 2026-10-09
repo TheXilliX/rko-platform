@@ -78,6 +78,7 @@ const saveLesson = $("#saveLesson");
 const lessonPreviewButton = $("#lessonPreviewButton");
 const lessonPreviewLayer = $("#lessonPreviewLayer");
 const lessonPreviewClose = $("#lessonPreviewClose");
+const lessonPreviewBack = $("#lessonPreviewBack");
 const lessonPreviewTitle = $("#lessonPreviewTitle");
 const lessonPreviewContent = $("#lessonPreviewContent");
 const previousLesson = $("#previousLesson");
@@ -2335,7 +2336,7 @@ function renderEditorBlocks() {
 async function openLessonPreview() {
   if (!editorDraft || !lessonComposer) return;
   lessonPreviewTitle.textContent = lessonNameInput.value.trim() || "Без названия";
-  lessonPreviewContent.innerHTML = `<div class="lesson-document">${lessonComposer.getHTML()}</div>`;
+  lessonPreviewContent.innerHTML = `<section class="lesson-block lesson-block--text lesson-document">${lessonComposer.getHTML()}</section>`;
   lessonPreviewLayer.classList.add("is-visible");
   lessonPreviewLayer.setAttribute("aria-hidden", "false");
   await hydrateDocumentAssets(lessonPreviewContent, getAsset, Boolean(editorDraft.allowDownloads));
@@ -2666,6 +2667,7 @@ allowWhenBlocked?.addEventListener("change", () => {
 saveLesson.addEventListener("click", saveEditorLesson);
 lessonPreviewButton?.addEventListener("click", openLessonPreview);
 lessonPreviewClose?.addEventListener("click", closeLessonPreview);
+lessonPreviewBack?.addEventListener("click", closeLessonPreview);
 lessonPreviewLayer?.addEventListener("click", (event) => { if (event.target === lessonPreviewLayer) closeLessonPreview(); });
 deleteLesson.addEventListener("click", () => openDeleteDialog(editorLessonId));
 defaultVisibility.addEventListener("click", () => {
