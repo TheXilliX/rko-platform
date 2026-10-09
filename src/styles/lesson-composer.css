@@ -59,12 +59,13 @@
 .lesson-document blockquote[style*="color"] {color:inherit}
 .lesson-preview-layer {position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:28px;background:#29292940;opacity:0;pointer-events:none;transition:opacity .22s ease}
 .lesson-preview-layer.is-visible {opacity:1;pointer-events:auto}
-.lesson-preview-card {position:relative;width:min(1120px,100%);max-height:min(92vh,980px);overflow:auto;padding:34px 48px 52px;border:1px solid #e5e2db;border-radius:22px;background:#fffefa;box-shadow:0 20px 70px #29292926;transform:translateY(8px);transition:transform .22s ease}
+.lesson-preview-card {position:relative;width:min(1240px,100%);max-height:min(92vh,980px);overflow:auto;padding:34px 48px 52px;border:1px solid #e5e2db;border-radius:22px;background:#fffefa;box-shadow:0 20px 70px #29292926;transform:translateY(8px);transition:transform .22s ease;scrollbar-width:none}
+.lesson-preview-card::-webkit-scrollbar {display:none}
 .lesson-preview-layer.is-visible .lesson-preview-card {transform:none}
-.lesson-preview-reader {inset:auto;display:block;position:relative;max-width:1120px}
+.lesson-preview-reader {inset:auto;display:grid;position:relative;max-width:1240px;grid-template-columns:minmax(0,900px) minmax(220px,280px);column-gap:clamp(28px,4vw,64px);align-items:start}
 .lesson-preview-reader .reader-title {margin-top:28px}
-.lesson-preview-reader .reader-content {margin-top:42px;max-width:780px}
-.lesson-preview-reader .reader-navigation {max-width:780px}
+.lesson-preview-reader .reader-content,.lesson-preview-reader .reader-navigation {margin-top:42px;max-width:900px}
+.lesson-preview-reader .reader-program {grid-column:2;grid-row:1 / span 4;display:block;position:static;max-height:none;overflow:visible;margin-top:76px}
 .lesson-preview-reader .lesson-preview-back {position:relative;top:auto;left:auto;display:inline-flex}
 .lesson-preview-close {position:absolute;top:18px;right:20px;width:38px;height:38px;border:1px solid #d9d5cc;border-radius:50%;background:transparent;color:#292929;font-size:25px;line-height:1;cursor:pointer}
 @media(max-width:560px){.lesson-preview-card{padding:30px 20px 34px}.lesson-preview-reader .reader-content{margin-top:30px}}
