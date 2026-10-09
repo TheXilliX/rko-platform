@@ -4340,11 +4340,11 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
 /* Final control positioning hotfix. */
 @media (min-width: 1021px) {
   .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; align-self: start !important; margin-top: 0 !important; }
-  .lesson-reader > .reader-navigation { position: static !important; align-self: start !important; clear: both !important; margin-top: 70px !important; transform: none !important; }
+  .lesson-reader > .reader-navigation { grid-column: 1 !important; grid-row: 4 !important; position: static !important; align-self: start !important; clear: both !important; margin-top: 70px !important; transform: none !important; }
 }
 @media (max-width: 1020px) {
   .lesson-reader > .reader-back { position: sticky !important; top: 0 !important; z-index: 20 !important; }
-  .lesson-reader > .reader-navigation { position: static !important; margin-top: 48px !important; transform: none !important; }
+  .lesson-reader > .reader-navigation { grid-row: auto !important; position: static !important; margin-top: 48px !important; transform: none !important; }
 }
 
 /* Keep lesson controls in their intended places: the back control stays
