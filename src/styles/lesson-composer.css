@@ -131,3 +131,10 @@
   .lesson-reader>.reader-back{width:max-content!important;align-self:flex-start!important;margin-left:0!important;margin-right:0!important;}
   .lesson-reader>.reader-navigation{width:min(1080px,calc(100% - 328px))!important;align-self:center!important;}
 }
+
+/* Preview uses the same 1080px lesson column as the learner view. */
+@media(min-width:1021px){
+  .lesson-preview-card{width:min(1480px,calc(100vw - 48px))!important;max-width:1480px!important;padding-left:48px!important;padding-right:48px!important;}
+  .lesson-preview-reader{width:min(1080px,100%)!important;max-width:1080px!important;margin-left:auto!important;margin-right:auto!important;}
+  .lesson-preview-reader .reader-title,.lesson-preview-reader .reader-content{width:100%!important;max-width:1080px!important;}
+}
