@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <script>document.write('<base href="' + (location.hostname === "thexillix.github.io" ? "/rko-platform/" : "/") + '">');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#FBFAF7">
   <meta name="description" content="Приватная образовательная платформа RKO">
@@ -10,7 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Urbanist:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="./favicon-v2h.svg">
-  <link rel="stylesheet" href="./src/styles/main.css?v=20261009-editor-1">
+  <link rel="stylesheet" href="./src/styles/main.css?v=20261009-document-2">
+  <link rel="stylesheet" href="./src/styles/lesson-composer.css?v=20261009-document-2">
   <link rel="stylesheet" href="./src/styles/conifer-cult.css?v=20261003-lesson-reader-3">
 </head>
 <body>
@@ -339,18 +341,10 @@
               <span>НАЗВАНИЕ УРОКА</span>
               <input id="lessonNameInput" type="text" autocomplete="off">
             </label>
-            <div class="lesson-editor-toolbar" id="lessonEditorToolbar" aria-label="Инструменты редактора">
-              <button type="button" data-editor-command="bold" title="Жирный"><b>B</b></button>
-              <button type="button" data-editor-command="italic" title="Курсив"><i>I</i></button>
-              <button type="button" data-editor-command="formatBlock" data-editor-value="h2" title="Заголовок">H</button>
-              <button type="button" data-editor-command="formatBlock" data-editor-value="blockquote" title="Цитата">❝</button>
-              <button type="button" data-editor-command="insertUnorderedList" title="Список">☷</button>
-              <button type="button" data-editor-command="createLink" title="Ссылка">↗</button>
-              <button type="button" data-editor-command="insertTable" title="Таблица">▦</button>
-              <button type="button" data-editor-command="insertHorizontalRule" title="Разделитель">—</button>
+            <div class="lesson-composer">
+              <div id="lessonEditorToolbar" aria-label="Инструменты редактора"></div>
+              <div id="lessonBlocks" class="composer-content"></div>
             </div>
-            <div class="lesson-blocks" id="lessonBlocks"></div>
-            <button class="add-block-button" id="addBlockButton" type="button">+ ДОБАВИТЬ БЛОК</button>
           </section>
 
           <aside class="editor-sidebar">
@@ -407,24 +401,6 @@
           <button class="exit-confirm-discard" id="exitConfirmDiscard" type="button">НЕ СОХРАНЯТЬ</button>
           <button class="confirm-yes" id="exitConfirmSave" type="button">СОХРАНИТЬ И ВЫЙТИ</button>
         </div>
-      </div>
-    </div>
-
-    <div class="block-picker-layer" id="blockPickerLayer" aria-hidden="true">
-      <div class="block-picker" role="dialog" aria-modal="true" aria-labelledby="blockPickerTitle">
-        <h2 id="blockPickerTitle">ЧТО ДОБАВИТЬ?</h2>
-        <div class="block-options">
-          <button type="button" data-block-type="heading">ЗАГОЛОВОК</button>
-          <button type="button" data-block-type="accordion">РАСКРЫВАЮЩИЙСЯ ЗАГОЛОВОК</button>
-          <button type="button" data-block-type="text">ТЕКСТ</button>
-          <button type="button" data-block-type="callout">АКЦЕНТНЫЙ БЛОК</button>
-          <button type="button" data-block-type="divider">РАЗДЕЛИТЕЛЬ</button>
-          <button type="button" data-block-type="image">ИЗОБРАЖЕНИЕ</button>
-          <button type="button" data-block-type="video">ВИДЕО</button>
-          <button type="button" data-block-type="audio">АУДИО</button>
-          <button type="button" data-block-type="file">ФАЙЛ</button>
-        </div>
-        <button class="block-picker-cancel" id="blockPickerCancel" type="button">ОТМЕНИТЬ</button>
       </div>
     </div>
 
@@ -526,6 +502,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/scripts/app.js?v=20261009-editor-1"></script>
+  <script type="module" src="./src/scripts/app.js?v=20261009-document-2"></script>
 </body>
 </html>
