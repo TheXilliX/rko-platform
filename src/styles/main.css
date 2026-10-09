@@ -3914,6 +3914,25 @@ body.is-reordering { user-select: none; cursor: grabbing; touch-action: none; }
   }
 }
 
+/* Desktop reader width: this final override intentionally comes after all
+   responsive reader rules so the lesson cannot be narrowed by legacy styles. */
+@media (min-width: 1280px) {
+  .lesson-reader {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1080px) minmax(220px, 260px) !important;
+    width: min(100%, 1430px) !important;
+    max-width: 1430px !important;
+    column-gap: clamp(28px, 3.4vw, 56px) !important;
+  }
+  .lesson-reader > .reader-back,
+  .lesson-reader > .reader-title,
+  .lesson-reader > .reader-content,
+  .lesson-reader > .reader-navigation {
+    width: 100% !important;
+    max-width: 1080px !important;
+  }
+}
+
 /* Unified lesson editor surface and media polish. */
 .lesson-editor-toolbar {
   display: flex;
