@@ -67,6 +67,7 @@ const editorPath = $("#editorPath");
 const lessonNameInput = $("#lessonNameInput");
 const lessonBlocks = $("#lessonBlocks");
 const addBlockButton = $("#addBlockButton");
+const lessonEditorToolbar = $("#lessonEditorToolbar");
 const editorState = $("#editorState");
 const editorDirtyIndicator = $("#editorDirtyIndicator");
 const lessonVisibility = $("#lessonVisibility");
@@ -1952,6 +1953,19 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
   renderReaderBlocks(lesson.blocks ?? [], lesson.allowDownloads);
 }
 
+readerContent?.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link) return;
+  const url = new URL(link.href, window.location.origin);
+  const match = url.pathname.match(/^\/lesson\/([^/]+)$/);
+  if (!match || url.origin !== window.location.origin) return;
+  event.preventDefault();
+  const id = decodeURIComponent(match[1]);
+  const found = findNode(savedStructure, id);
+  if (found?.item?.type === "lesson") openLessonReader(found.item);
+  else showNotice("УРОК НЕ НАЙДЕН", "error");
+});
+
 
 function formatMediaTime(value) {
   const seconds = Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
@@ -2458,6 +2472,34 @@ function buildRichTextToolbar(toolbar, area, block) {
   }));
   syncToolbar();
 }
+
+let activeEditorArea = null;
+document.addEventListener("focusin", (event) => {
+  if (event.target.matches?.(".lesson-block .rich-text")) activeEditorArea = event.target;
+});
+lessonEditorToolbar?.addEventListener("mousedown", (event) => {
+  const button = event.target.closest("[data-editor-command]");
+  if (!button) return;
+  event.preventDefault();
+  const area = activeEditorArea || lessonBlocks?.querySelector(".rich-text");
+  if (!area) return;
+  area.focus({ preventScroll: true });
+  const command = button.dataset.editorCommand;
+  if (command === "createLink") {
+    const value = window.prompt("Вставьте URL урока или обычную ссылку");
+    if (value) document.execCommand("createLink", false, value);
+  } else if (command === "insertTable") {
+    const rows = Math.max(1, Math.min(20, Number(window.prompt("Количество строк", "3")) || 3));
+    const columns = Math.max(1, Math.min(10, Number(window.prompt("Количество столбцов", "2")) || 2));
+    const table = `<table><tbody>${Array.from({ length: rows }, () => `<tr>${Array.from({ length: columns }, () => "<td>Текст</td>").join("")}</tr>`).join("")}</tbody></table><p><br></p>`;
+    document.execCommand("insertHTML", false, table);
+  } else if (command === "formatBlock") {
+    document.execCommand("formatBlock", false, button.dataset.editorValue);
+  } else {
+    document.execCommand(command, false, null);
+  }
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+});
 
 function renderTextBlock(container, block) {
   const toolbar = document.createElement("div");
