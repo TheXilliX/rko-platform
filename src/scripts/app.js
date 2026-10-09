@@ -1,3 +1,4 @@
+import { createLessonComposer, hydrateDocumentAssets } from './lesson-composer.bundle.js';
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const splash = $("#splash");
@@ -66,7 +67,7 @@ const editorBack = $("#editorBack");
 const editorPath = $("#editorPath");
 const lessonNameInput = $("#lessonNameInput");
 const lessonBlocks = $("#lessonBlocks");
-const addBlockButton = $("#addBlockButton");
+let lessonComposer = null;
 const lessonEditorToolbar = $("#lessonEditorToolbar");
 const editorState = $("#editorState");
 const editorDirtyIndicator = $("#editorDirtyIndicator");
@@ -74,9 +75,6 @@ const lessonVisibility = $("#lessonVisibility");
 const allowDownloads = $("#allowDownloads");
 const deleteLesson = $("#deleteLesson");
 const saveLesson = $("#saveLesson");
-const blockPickerLayer = $("#blockPickerLayer");
-const blockPickerCancel = $("#blockPickerCancel");
-const blockOptions = $$("[data-block-type]");
 const previousLesson = $("#previousLesson");
 const nextLesson = $("#nextLesson");
 const lessonProgress = $("#lessonProgress");
@@ -217,6 +215,8 @@ function normalizeHeadingBlock(block) {
 
 const API_BASE = "/api";
 const IS_GITHUB_PREVIEW = window.location.hostname === "thexillix.github.io";
+const routePath = (url = location) => url.hash.startsWith("#/") ? url.hash.slice(1) : url.pathname;
+const routeUrl = (path) => IS_GITHUB_PREVIEW ? "/rko-platform/#" + path : path;
 const PREVIEW_ACCOUNTS_KEY = "rko-preview-accounts-v1";
 const PREVIEW_ARCHIVE_KEY = "rko-preview-archive-v1";
 const PREVIEW_CONSENTS_KEY = "rko-preview-consents-v1";
@@ -765,8 +765,8 @@ function showDashboard(account) {
   renderStructure();
   setPage(dashboardPage);
   syncConiferAvailability();
-  const lessonMatch = location.pathname.match(/^\/lesson\/([^/]+)$/);
-  if (location.pathname === "/offers") {
+  const lessonMatch = routePath().match(/^\/lesson\/([^/]+)$/);
+  if (routePath() === "/offers") {
     window.setTimeout(openOffers, 0);
   } else if (lessonMatch) {
     const found = findNode(savedStructure, decodeURIComponent(lessonMatch[1]));
@@ -1945,9 +1945,9 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
   syncConiferAvailability();
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
-  const nextUrl = `/lesson/${encodeURIComponent(lesson.id)}`;
+  const nextUrl = routeUrl(`/lesson/${encodeURIComponent(lesson.id)}`);
   if (historyMode === "replace") history.replaceState({ lessonId: lesson.id }, "", nextUrl);
-  else if (location.pathname !== nextUrl) history.pushState({ lessonId: lesson.id }, "", nextUrl);
+  else if (routePath() !== nextUrl) history.pushState({ lessonId: lesson.id }, "", nextUrl);
   renderLessonNavigation(lesson);
   renderReaderProgram(lesson.id);
   renderReaderBlocks(lesson.blocks ?? [], lesson.allowDownloads);
@@ -1957,7 +1957,7 @@ readerContent?.addEventListener("click", (event) => {
   const link = event.target.closest("a[href]");
   if (!link) return;
   const url = new URL(link.href, window.location.origin);
-  const match = url.pathname.match(/^\/lesson\/([^/]+)$/);
+  const match = routePath(url).match(/^\/lesson\/([^/]+)\/?$/);
   if (!match || url.origin !== window.location.origin) return;
   event.preventDefault();
   const id = decodeURIComponent(match[1]);
@@ -2024,6 +2024,12 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
       element.appendChild(heading);
     } else if (block.type === "text") {
       element.innerHTML = block.html || "";
+      if (block.documentVersion) {
+        element.classList.add("lesson-document");
+        const urls = await hydrateDocumentAssets(element, getAsset, downloadsAllowed);
+        if (renderToken !== readerRenderToken) { urls.forEach(URL.revokeObjectURL); return; }
+        readerMediaUrls.push(...urls);
+      }
     } else if (block.type === "callout") {
       normalizeCalloutBlock(block);
       const variant = normalizeCalloutVariant(block.variant);
@@ -2263,6 +2269,7 @@ function leaveEditorToCourse({ force = false } = {}) {
     openEditorExitConfirm();
     return;
   }
+  lessonComposer?.destroy(); lessonComposer = null;
   editorLessonId = null;
   editorDraft = null;
   editorOriginal = null;
@@ -2274,6 +2281,7 @@ function leaveEditorToCourse({ force = false } = {}) {
 }
 
 function closeLessonEditor() {
+  lessonComposer?.destroy(); lessonComposer = null;
   editorLessonId = null;
   editorDraft = null;
   editorOriginal = null;
@@ -2307,429 +2315,20 @@ function updateEditorState() {
 }
 
 function renderEditorBlocks() {
-  lessonBlocks.innerHTML = "";
-  editorDraft.blocks.forEach((block) => {
-    const row = document.createElement("div");
-    if (block.type === "callout") normalizeCalloutBlock(block);
-    row.className = `lesson-block lesson-block--${block.type}${blockDragId === block.id ? " is-dragging" : ""}${blockDragTargetId === block.id && blockDragId !== block.id ? " is-drag-target" : ""}${blockDragTargetId === block.id && blockDragAfter ? " is-drop-after" : ""}`;
-    row.dataset.blockId = block.id;
-    if (block.type === "callout") row.style.setProperty("--callout-color", block.color);
-    const label = { heading: "ЗАГОЛОВОК", accordion: "РАСКРЫВАЮЩИЙСЯ ЗАГОЛОВОК", text: "ТЕКСТ", callout: "ВАЖНО", divider: "РАЗДЕЛИТЕЛЬ", image: "ИЗОБРАЖЕНИЕ", video: "ВИДЕО", audio: "АУДИО", file: "ФАЙЛ" }[block.type] || "БЛОК";
-    row.innerHTML = `<button class="block-drag" type="button" aria-label="Переместить блок">⠿</button><strong class="block-label">${label}</strong><div class="block-editor"></div><button class="block-delete" type="button" data-block-action="delete" aria-label="Удалить блок"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
-    const editor = row.querySelector(".block-editor");
-    if (block.type === "heading") renderHeadingBlock(editor, block);
-    else if (block.type === "accordion") renderAccordionBlock(editor, block);
-    else if (block.type === "text") renderTextBlock(editor, block);
-    else if (block.type === "callout") renderCalloutBlock(editor, block);
-    else if (block.type === "divider") renderDividerBlock(editor);
-    else renderFileBlock(editor, block);
-    lessonBlocks.appendChild(row);
-  });
-  updateEditorState();
-}
-
-function renderHeadingBlock(container, block) {
-  normalizeHeadingBlock(block);
-  const fields = document.createElement("div");
-  fields.className = "heading-fields";
-  const select = document.createElement("select");
-  ["H1", "H2", "H3", "H4", "H5", "H6"].forEach((level) => {
-    const option = document.createElement("option");
-    option.value = level.toLowerCase();
-    option.textContent = level;
-    option.selected = block.level === option.value;
-    select.appendChild(option);
-  });
-  const input = document.createElement("input");
-  input.type = "text";
-  input.value = block.text || "";
-  input.placeholder = "Текст заголовка";
-  select.addEventListener("change", () => {
-    block.level = select.value;
-    updateEditorState();
-  });
-  input.addEventListener("input", () => {
-    block.text = input.value;
-    updateEditorState();
-  });
-  fields.append(select, input);
-
-  const alignToolbar = document.createElement("div");
-  alignToolbar.className = "heading-align-toolbar";
-  alignToolbar.setAttribute("aria-label", "Выравнивание заголовка");
-  const alignments = [
-    { value: "left", label: "По левому краю", path: "M4 6h16M4 12h11M4 18h16" },
-    { value: "center", label: "По центру", path: "M4 6h16M7 12h10M4 18h16" },
-    { value: "right", label: "По правому краю", path: "M4 6h16M9 12h11M4 18h16" },
-  ];
-  const syncAlignment = () => {
-    alignToolbar.querySelectorAll("[data-align]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.align === block.align);
-      button.setAttribute("aria-pressed", String(button.dataset.align === block.align));
-    });
-  };
-  alignments.forEach(({ value, label, path }) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "heading-align-button";
-    button.dataset.align = value;
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-    button.addEventListener("click", () => {
-      block.align = value;
-      syncAlignment();
+  lessonComposer?.destroy();
+  lessonComposer = createLessonComposer({
+    element: lessonBlocks, toolbar: lessonEditorToolbar, blocks: editorDraft.blocks,
+    getAsset, putAsset, onError: (message) => showNotice(message, "error"),
+    onChange: (html) => {
+      if (!editorDraft) return;
+      editorDraft.blocks = [{ id: "document-" + editorLessonId, type: "text", html, documentVersion: 1 }];
       updateEditorState();
-    });
-    alignToolbar.appendChild(button);
+    },
   });
-  syncAlignment();
-
-  const colorToolbar = document.createElement("div");
-  colorToolbar.className = "heading-color-toolbar";
-  colorToolbar.setAttribute("aria-label", "Цвет заголовка");
-  const syncColor = () => {
-    colorToolbar.querySelectorAll("[data-heading-color]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.headingColor === block.color);
-      button.setAttribute("aria-pressed", String(button.dataset.headingColor === block.color));
-    });
-  };
-  HEADING_COLORS.forEach(({ label, value }) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "heading-color-button" + (value ? "" : " is-default");
-    button.dataset.headingColor = value;
-    button.title = label;
-    button.setAttribute("aria-label", "Цвет заголовка: " + label);
-    const swatch = document.createElement("i");
-    swatch.setAttribute("aria-hidden", "true");
-    if (value) swatch.style.background = value;
-    button.appendChild(swatch);
-    button.addEventListener("click", () => {
-      block.color = value;
-      syncColor();
-      updateEditorState();
-    });
-    colorToolbar.appendChild(button);
-  });
-  syncColor();
-  container.append(fields, alignToolbar, colorToolbar);
 }
 
-function buildRichTextToolbar(toolbar, area, block) {
-  toolbar.className = "text-toolbar";
-  const highlightButtons = HIGHLIGHT_COLORS.map(({ name, value }) => `<button class="highlight-swatch" type="button" data-highlight="${value}" title="Выделить: ${name}" aria-label="Выделить: ${name}"><i style="background:${value}"></i></button>`).join("");
-  toolbar.innerHTML = `<button type="button" data-command="bold" title="Жирный"><b>B</b></button><button type="button" data-command="italic" title="Курсив"><i>I</i></button><button type="button" data-command="createLink">ССЫЛКА</button><button type="button" data-command="insertUnorderedList">СПИСОК</button><span class="text-toolbar-caption">МАРКЕР</span><span class="highlight-palette">${highlightButtons}</span>`;
-  let savedRange = null;
-  const rememberSelection = () => {
-    const selection = window.getSelection();
-    if (!selection?.rangeCount || !area.contains(selection.anchorNode) || !area.contains(selection.focusNode)) return;
-    savedRange = selection.getRangeAt(0).cloneRange();
-  };
-  const restoreSelection = () => {
-    if (!savedRange) return;
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(savedRange);
-  };
-  const syncToolbar = () => {
-    toolbar.querySelectorAll("[data-command]").forEach((button) => {
-      const command = button.dataset.command;
-      let active = false;
-      if (["bold", "italic", "insertUnorderedList"].includes(command)) active = document.queryCommandState(command);
-      if (command === "createLink") {
-        const node = window.getSelection()?.anchorNode;
-        active = Boolean(node?.parentElement?.closest("a"));
-      }
-      button.classList.toggle("is-active", active);
-    });
-  };
-  toolbar.addEventListener("mousedown", (event) => {
-    const button = event.target.closest("[data-command], [data-highlight]");
-    if (!button) return;
-    event.preventDefault();
-    rememberSelection();
-    area.focus({ preventScroll: true });
-    restoreSelection();
-    const highlight = button.dataset.highlight;
-    const command = button.dataset.command;
-    if (highlight) {
-      document.execCommand("styleWithCSS", false, true);
-      document.execCommand("hiliteColor", false, highlight);
-    } else {
-      const value = command === "createLink" ? window.prompt("Вставьте ссылку") : null;
-      if (command !== "createLink" || value) document.execCommand(command, false, value);
-    }
-    block.html = area.innerHTML;
-    syncToolbar();
-    updateEditorState();
-  });
-  ["input", "keyup", "mouseup", "focus", "blur"].forEach((eventName) => area.addEventListener(eventName, () => {
-    rememberSelection();
-    block.html = area.innerHTML;
-    syncToolbar();
-    updateEditorState();
-  }));
-  syncToolbar();
-}
-
-let activeEditorArea = null;
-document.addEventListener("focusin", (event) => {
-  if (event.target.matches?.(".lesson-block .rich-text")) activeEditorArea = event.target;
-});
-lessonEditorToolbar?.addEventListener("mousedown", (event) => {
-  const button = event.target.closest("[data-editor-command]");
-  if (!button) return;
-  event.preventDefault();
-  const area = activeEditorArea || lessonBlocks?.querySelector(".rich-text");
-  if (!area) return;
-  area.focus({ preventScroll: true });
-  const command = button.dataset.editorCommand;
-  if (command === "createLink") {
-    const value = window.prompt("Вставьте URL урока или обычную ссылку");
-    if (value) document.execCommand("createLink", false, value);
-  } else if (command === "insertTable") {
-    const rows = Math.max(1, Math.min(20, Number(window.prompt("Количество строк", "3")) || 3));
-    const columns = Math.max(1, Math.min(10, Number(window.prompt("Количество столбцов", "2")) || 2));
-    const table = `<table><tbody>${Array.from({ length: rows }, () => `<tr>${Array.from({ length: columns }, () => "<td>Текст</td>").join("")}</tr>`).join("")}</tbody></table><p><br></p>`;
-    document.execCommand("insertHTML", false, table);
-  } else if (command === "formatBlock") {
-    document.execCommand("formatBlock", false, button.dataset.editorValue);
-  } else {
-    document.execCommand(command, false, null);
-  }
-  area.dispatchEvent(new Event("input", { bubbles: true }));
-});
-
-function renderTextBlock(container, block) {
-  const toolbar = document.createElement("div");
-  const area = document.createElement("div");
-  area.className = "rich-text"; area.contentEditable = "true"; area.dataset.placeholder = "Введите текст урока"; area.innerHTML = block.html || "";
-  buildRichTextToolbar(toolbar, area, block);
-  container.append(toolbar, area);
-}
-
-function renderAccordionBlock(container, block) {
-  const title = document.createElement("input");
-  title.type = "text";
-  title.className = "accordion-title-input";
-  title.placeholder = "Заголовок";
-  title.value = block.title || "";
-  const toolbar = document.createElement("div");
-  const area = document.createElement("div");
-  area.className = "rich-text";
-  area.contentEditable = "true";
-  area.dataset.placeholder = "Содержимое раскрывающегося блока";
-  area.innerHTML = block.html || "";
-  title.addEventListener("input", () => { block.title = title.value; updateEditorState(); });
-  buildRichTextToolbar(toolbar, area, block);
-  container.append(title, toolbar, area);
-}
-
-function renderCalloutBlock(container, block) {
-  normalizeCalloutBlock(block);
-  const settings = document.createElement("div");
-  settings.className = "callout-editor-settings";
-
-  const iconLabel = document.createElement("span");
-  iconLabel.className = "callout-setting-label";
-  iconLabel.textContent = "ЗНАЧОК";
-
-  const iconPicker = document.createElement("div");
-  iconPicker.className = "callout-icon-picker";
-  iconPicker.setAttribute("aria-label", "Значок блока");
-  const syncIcon = () => {
-    iconPicker.querySelectorAll("[data-callout-icon]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.calloutIcon === block.icon);
-      button.setAttribute("aria-pressed", String(button.dataset.calloutIcon === block.icon));
-    });
-  };
-  CALLOUT_ICONS.forEach((icon) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "callout-icon-button";
-    button.dataset.calloutIcon = icon;
-    button.textContent = icon;
-    button.title = icon === "!" ? "Восклицательный знак" : icon === "?" ? "Вопросительный знак" : "Галочка";
-    button.setAttribute("aria-label", button.title);
-    button.addEventListener("click", () => {
-      block.icon = icon;
-      block.variant = CALLOUT_ICON_VARIANTS[icon] || block.variant;
-      syncIcon();
-      updateEditorState();
-    });
-    iconPicker.appendChild(button);
-  });
-  syncIcon();
-
-  const colorLabel = document.createElement("span");
-  colorLabel.className = "callout-setting-label";
-  colorLabel.textContent = "ЦВЕТ";
-
-  const colorPicker = document.createElement("div");
-  colorPicker.className = "callout-color-picker";
-  colorPicker.setAttribute("aria-label", "Цвет блока");
-  const syncColor = () => {
-    colorPicker.querySelectorAll("[data-callout-color]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.calloutColor === block.color);
-      button.setAttribute("aria-pressed", String(button.dataset.calloutColor === block.color));
-    });
-  };
-  CALLOUT_COLORS.forEach((color) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "callout-color-button";
-    button.dataset.calloutColor = color.value;
-    button.title = color.label;
-    button.setAttribute("aria-label", color.label);
-    button.style.setProperty("--swatch", color.value);
-    button.addEventListener("click", () => {
-      block.color = color.value;
-      syncColor();
-      updateEditorState();
-    });
-    colorPicker.appendChild(button);
-  });
-  syncColor();
-
-  const label = document.createElement("input");
-  label.className = "callout-label-input";
-  label.type = "text";
-  label.value = block.label;
-  label.placeholder = "Название блока";
-  label.setAttribute("aria-label", "Название блока");
-  label.addEventListener("input", () => {
-    block.label = label.value;
-    updateEditorState();
-  });
-
-  settings.append(iconLabel, iconPicker, colorLabel, colorPicker, label);
-
-  const toolbar = document.createElement("div");
-  const area = document.createElement("div");
-  area.className = "rich-text callout-rich-text";
-  area.contentEditable = "true";
-  area.dataset.placeholder = "Введите текст блока";
-  area.innerHTML = block.html || "";
-  buildRichTextToolbar(toolbar, area, block);
-  container.append(settings, toolbar, area);
-}
-function renderDividerBlock(container) {
-  const preview = document.createElement("div");
-  preview.className = "divider-editor-preview";
-  preview.setAttribute("role", "separator");
-  preview.textContent = "РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ";
-  container.appendChild(preview);
-}
-
-async function renderFileBlock(container, block) {
-  const info = document.createElement("div");
-  info.className = "file-block-info";
-  const name = document.createElement("span");
-  name.textContent = block.fileName || "Файл не выбран";
-  const choose = document.createElement("button");
-  choose.type = "button"; choose.textContent = block.fileName ? "ЗАМЕНИТЬ" : "ВЫБРАТЬ";
-  const input = document.createElement("input");
-  input.type = "file"; input.hidden = true;
-  if (block.type === "image") input.accept = "image/*";
-  if (block.type === "video") input.accept = "video/*";
-  if (block.type === "audio") input.accept = "audio/*";
-  choose.addEventListener("click", () => input.click());
-  input.addEventListener("change", async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    await putAsset(block.id, file);
-    block.fileName = file.name;
-    block.mime = file.type;
-    renderEditorBlocks();
-  });
-  info.append(name, choose, input);
-  container.appendChild(info);
-  const asset = block.fileName ? await getAsset(block.id) : null;
-  if (asset?.blob && (block.type === "image" || block.type === "video" || block.type === "audio")) {
-    const preview = document.createElement(block.type === "image" ? "img" : block.type);
-    preview.className = "block-preview";
-    preview.src = URL.createObjectURL(asset.blob);
-    if (block.type !== "image") preview.controls = true;
-    container.appendChild(preview);
-  }
-}
-
-function openBlockPicker() {
-  blockPickerLayer.classList.add("is-visible");
-  blockPickerLayer.setAttribute("aria-hidden", "false");
-}
-
-function closeBlockPicker() {
-  blockPickerLayer.classList.remove("is-visible");
-  blockPickerLayer.setAttribute("aria-hidden", "true");
-}
-
-function addLessonBlock(type) {
-  const block = { id: uid("block"), type };
-  if (type === "heading") Object.assign(block, { level: "h1", align: "left", color: "", text: "" });
-  if (type === "accordion") Object.assign(block, { title: "Раскрывающийся заголовок", html: "" });
-  if (type === "text" || type === "callout") block.html = "";
-  if (type === "callout") Object.assign(block, { variant: "important", label: "ВАЖНО", icon: "!", color: CALLOUT_DEFAULT_COLOR });
-  editorDraft.blocks.push(block);
-  closeBlockPicker();
-  renderEditorBlocks();
-  requestAnimationFrame(() => lessonBlocks.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "center" }));
-}
-
-function beginBlockDrag(event, id) {
-  event.preventDefault();
-  event.stopPropagation();
-  blockDragId = id;
-  blockDragTargetId = id;
-  blockDragAfter = false;
-  document.body.classList.add("is-reordering");
-  const sourceRow = lessonBlocks.querySelector(`[data-block-id="${id}"]`);
-  dragGhost = createDragGhost(sourceRow?.querySelector(".block-label")?.textContent || "БЛОК");
-  document.body.appendChild(dragGhost);
-  sourceRow?.classList.add("is-dragging");
-  const move = (moveEvent) => {
-    moveEvent.preventDefault();
-    moveGhost(moveEvent.clientX, moveEvent.clientY);
-    autoScrollWhileDragging(moveEvent.clientY);
-    const row = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest(".lesson-block");
-    if (row) {
-      lessonBlocks.querySelectorAll(".lesson-block.is-drag-target").forEach((target) => target.classList.remove("is-drag-target", "is-drop-after"));
-      blockDragTargetId = row.dataset.blockId;
-      blockDragAfter = moveEvent.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
-      if (blockDragTargetId !== blockDragId) {
-        row.classList.add("is-drag-target");
-        row.classList.toggle("is-drop-after", blockDragAfter);
-      }
-    }
-  };
-  const finish = () => {
-    document.removeEventListener("pointermove", move);
-    document.removeEventListener("pointerup", finish);
-    document.removeEventListener("pointercancel", finish);
-    const scrollTop = editorPage.scrollTop;
-    const from = editorDraft.blocks.findIndex((block) => block.id === blockDragId);
-    const to = editorDraft.blocks.findIndex((block) => block.id === blockDragTargetId);
-    if (from >= 0 && to >= 0 && from !== to) {
-      const [moved] = editorDraft.blocks.splice(from, 1);
-      const insertAt = blockDragAfter ? (from < to ? to : to + 1) : (from < to ? to - 1 : to);
-      editorDraft.blocks.splice(Math.max(0, insertAt), 0, moved);
-    }
-    blockDragId = null;
-    blockDragTargetId = null;
-    blockDragAfter = false;
-    document.body.classList.remove("is-reordering");
-    removeDragGhost();
-    renderEditorBlocks();
-    requestAnimationFrame(() => { editorPage.scrollTop = scrollTop; });
-  };
-  document.addEventListener("pointermove", move, { passive: false });
-  document.addEventListener("pointerup", finish, { once: true });
-  document.addEventListener("pointercancel", finish, { once: true });
-}
-
-function saveEditorLesson() {
-  if (!editorDraft) return;
+async function saveEditorLesson() {
+  if (!editorDraft || saveLesson.disabled) return false;
   editorDraft.title = lessonNameInput.value.trim() || "Без названия";
   editorDraft.allowDownloads = allowDownloads.checked;
   editorDraft.allowWhenBlocked = Boolean(allowWhenBlocked?.checked);
@@ -2737,18 +2336,35 @@ function saveEditorLesson() {
   const persisted = findNode(savedStructure, editorLessonId);
   if (!draftFound || !persisted) {
     showNotice("СНАЧАЛА СОХРАНИ СТРУКТУРУ", "error");
-    return;
+    return false;
   }
-  Object.assign(draftFound.item, clone(editorDraft));
-  Object.assign(persisted.item, clone(editorDraft));
+  const snapshot = clone(editorDraft);
+  const nextStructure = clone(savedStructure);
+  Object.assign(findNode(nextStructure, editorLessonId).item, snapshot);
+  saveLesson.disabled = true;
+  try {
+    if (backendConnected) {
+      const { response } = await apiRequest("/course", {
+        method: "PUT", body: JSON.stringify({ structure: nextStructure, settings: platformSettings }),
+      });
+      if (!response.ok) throw new Error("save_failed");
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStructure));
+  } catch {
+    showNotice("НЕ УДАЛОСЬ СОХРАНИТЬ УРОК. ИЗМЕНЕНИЯ ОСТАЛИСЬ В РЕДАКТОРЕ", "error");
+    saveLesson.disabled = false;
+    return false;
+  }
+  Object.assign(draftFound.item, snapshot);
+  Object.assign(persisted.item, snapshot);
   baselineIds = collectIds(savedStructure);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStructure));
-  syncCourseToServer();
-  editorOriginal = clone(editorDraft);
+  editorOriginal = snapshot;
   renderStructure();
   renderCourse();
   updateEditorState();
   showNotice("УРОК СОХРАНЁН", "success");
+  saveLesson.disabled = false;
+  return true;
 }
 
 loginInput.addEventListener("input", updateReadyState);
@@ -2808,9 +2424,9 @@ exitConfirmDiscard?.addEventListener("click", () => {
   }
   leaveAdmin({ save: false });
 });
-exitConfirmSave?.addEventListener("click", () => {
+exitConfirmSave?.addEventListener("click", async () => {
   if (exitConfirmLayer?.dataset.mode === "editor") {
-    saveEditorLesson();
+    if (!await saveEditorLesson()) return;
     if (!hasUnsavedEditorChanges()) leaveEditorToCourse({ force: true });
     return;
   }
@@ -2910,13 +2526,13 @@ courseGuideBack.addEventListener("click", () => {
 });
 
 readerBack.addEventListener("click", () => {
-  history.pushState({ view: "course" }, "", "/");
+  history.pushState({ view: "course" }, "", routeUrl("/"));
   renderCourse();
 });
 
 window.addEventListener("popstate", () => {
-  if (location.pathname === "/offers" && currentAccount) return openOffers({ push: false });
-  const match = location.pathname.match(/^\/lesson\/([^/]+)$/);
+  if (routePath() === "/offers" && currentAccount) return openOffers({ push: false });
+  const match = routePath().match(/^\/lesson\/([^/]+)$/);
   if (match && currentAccount) {
     const found = findNode(savedStructure, decodeURIComponent(match[1]));
     if (found?.item?.type === "lesson") openLessonReader(found.item, { historyMode: "replace" });
@@ -3018,22 +2634,6 @@ allowWhenBlocked?.addEventListener("change", () => {
   if (!editorDraft) return;
   editorDraft.allowWhenBlocked = allowWhenBlocked.checked;
   updateEditorState();
-});
-addBlockButton.addEventListener("click", openBlockPicker);
-blockPickerCancel.addEventListener("click", closeBlockPicker);
-blockPickerLayer.addEventListener("click", (event) => { if (event.target === blockPickerLayer) closeBlockPicker(); });
-blockOptions.forEach((button) => button.addEventListener("click", () => addLessonBlock(button.dataset.blockType)));
-lessonBlocks.addEventListener("click", (event) => {
-  const row = event.target.closest(".lesson-block");
-  if (!row) return;
-  if (event.target.closest("[data-block-action='delete']")) {
-    openBlockDeleteDialog(row.dataset.blockId);
-  }
-});
-lessonBlocks.addEventListener("pointerdown", (event) => {
-  const handle = event.target.closest(".block-drag");
-  const row = event.target.closest(".lesson-block");
-  if (handle && row) beginBlockDrag(event, row.dataset.blockId);
 });
 saveLesson.addEventListener("click", saveEditorLesson);
 deleteLesson.addEventListener("click", () => openDeleteDialog(editorLessonId));
@@ -3226,11 +2826,11 @@ function openOffers({ push = true } = {}) {
   renderOffers(false);
   $("#offersEdit").hidden = !isStaffAccount(currentAccount);
   setPage(offersPage);
-  if (push && location.pathname !== "/offers") history.pushState({ view: "offers" }, "", "/offers");
+  if (push && routePath() !== "/offers") history.pushState({ view: "offers" }, "", routeUrl("/offers"));
 }
 $("#offersButton")?.addEventListener("click", openOffers);
-$("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
-$("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", "/"); });
+$("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", routeUrl("/")); });
+$("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", routeUrl("/")); });
 $("#offersEdit")?.addEventListener("click", () => renderOffers(true));
 $("#offersSave")?.addEventListener("click", saveOffers);
 $("#offersContent")?.addEventListener("click", (event) => {
