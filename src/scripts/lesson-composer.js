@@ -66,9 +66,12 @@ export async function hydrateDocumentAssets(root, getAsset, downloadsAllowed=tru
       else {media.controls=true; media.preload='metadata'; media.setAttribute('playsinline','');}
       figure.append(media);
     }
-    if (downloadsAllowed) {
+    if (downloadsAllowed && kind !== 'image') {
       const link=document.createElement('a'); link.href=url; link.download=figure.dataset.filename||'file'; link.textContent=figure.dataset.filename||'Скачать файл'; figure.append(link);
     } else if (kind==='file') figure.textContent=figure.dataset.filename||'Вложение';
+    if (kind === 'image' && figure.dataset.caption) {
+      const caption = document.createElement('figcaption'); caption.textContent = figure.dataset.caption; figure.append(caption);
+    }
   }));
   return urls;
 }
@@ -82,12 +85,13 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       asset:{default:'',parseHTML:e=>e.dataset.asset,renderHTML:a=>({'data-asset':a.asset})},
       kind:{default:'file',parseHTML:e=>e.dataset.kind,renderHTML:a=>({'data-kind':a.kind})},
       filename:{default:'',parseHTML:e=>e.dataset.filename,renderHTML:a=>({'data-filename':a.filename})},
+      caption:{default:'',parseHTML:e=>e.dataset.caption,renderHTML:a=>({'data-caption':a.caption})},
     };},
     parseHTML(){return [{tag:'figure[data-asset]'}];},
     renderHTML({HTMLAttributes}){return ['figure',mergeAttributes(HTMLAttributes,{class:'document-asset'})];},
     addNodeView(){return ({node})=>{
       const dom=document.createElement('figure'); dom.className='document-asset'; dom.contentEditable='false';
-      Object.assign(dom.dataset,{asset:node.attrs.asset,kind:node.attrs.kind,filename:node.attrs.filename});
+      Object.assign(dom.dataset,{asset:node.attrs.asset,kind:node.attrs.kind,filename:node.attrs.filename,caption:node.attrs.caption||''});
       dom.textContent='Загрузка вложения…';
       let dead=false, urls=[];
       const wrapper=document.createElement('div'); wrapper.append(dom);
@@ -118,6 +122,10 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
     else if(name==='details') chain.insertContent({type:'details',attrs:{open:true},content:[{type:'detailsSummary',content:[{type:'text',text:'Раскрывающийся заголовок'}]},{type:'detailsContent',content:[{type:'paragraph',content:[{type:'text',text:'Содержимое'}]}]}]}).run();
     else if(name==='reset') chain.unsetAllMarks().clearNodes().run();
     else if(typeof chain[name]==='function') chain[name]().run();
+    // A mark applied to a selection must not leak into the next characters typed.
+    if (editor.state.selection.from !== editor.state.selection.to) {
+      editor.view.dispatch(editor.state.tr.setStoredMarks([]));
+    }
     closeMenu(); sync();
   };
   toolbar.className='composer-toolbar'; toolbar.setAttribute('role','toolbar');
@@ -176,7 +184,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       [['Фото или видео','image/*,video/*'],['Аудиофайл','audio/*'],['Файл','']].forEach(([label,accept])=>{
         const b=document.createElement('button');b.type='button';b.className='composer-menu-item';b.textContent=label;b.onclick=()=>{
           const input=document.createElement('input');input.type='file';input.accept=accept;
-          input.onchange=async()=>{const file=input.files?.[0];if(!file||disposed)return;try{const id='asset-'+crypto.randomUUID();await putAsset(id,file);if(disposed)return;const kind=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';editor.chain().focus().insertContent([{type:'lessonAsset',attrs:{asset:id,kind,filename:file.name}},{type:'paragraph'}]).run();}catch{onError('Не удалось добавить файл. Проверьте свободное место.');}};input.click();closeMenu();};menu.append(b);
+          input.onchange=async()=>{const file=input.files?.[0];if(!file||disposed)return;try{const id='asset-'+crypto.randomUUID();await putAsset(id,file);if(disposed)return;const kind=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';const caption=kind==='image'?(window.prompt('Подпись к изображению (необязательно)','')||''):'';editor.chain().focus().insertContent([{type:'lessonAsset',attrs:{asset:id,kind,filename:file.name,caption}},{type:'paragraph'}]).run();}catch{onError('Не удалось добавить файл. Проверьте свободное место.');}};input.click();closeMenu();};menu.append(b);
       });
     }
     const trigger=toolbar.querySelector(`[data-menu="${key}"]`);const rect=toolbar.getBoundingClientRect();
