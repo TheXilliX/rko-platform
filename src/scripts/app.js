@@ -2083,6 +2083,7 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
   coursePath = hierarchy.filter((item) => item.type !== "lesson").map((item) => item.id);
   markLessonVisited(lesson.id);
   courseBrowser.classList.add("is-hidden");
+  $("#learningActions")?.classList.add("is-hidden");
   learningTitle.classList.add("is-reader-hidden");
   lessonReader.classList.add("is-visible");
   lessonReader.classList.remove("is-lesson-transitioning");
