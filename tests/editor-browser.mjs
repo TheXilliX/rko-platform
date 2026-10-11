@@ -73,6 +73,11 @@ assert.equal(promptDialogs,0);
 const firstCaption=page.locator('.document-asset-caption-input').first();
 assert.equal(await firstCaption.getAttribute('placeholder'),'Добавить подпись');
 await firstCaption.fill('Подпись для ученика');
+await page.locator('[data-menu="align"]').click();
+await page.getByRole('button',{name:'По левому краю',exact:true}).click();
+assert.equal(await firstCaption.evaluate(el=>el.style.textAlign),'left');
+assert.equal(await page.locator('#editorState span').textContent(),'НЕ СОХРАНЕНО');
+assert.equal(await page.locator('#editorDirtyIndicator').count(),0);
 // Files can also be dropped from the desktop. Multiple images/videos are accepted in one drop.
 await page.locator('.tiptap').evaluate((target,pngBytes)=>{
  const transfer=new DataTransfer();
@@ -88,7 +93,7 @@ await page.locator('#saveLesson').click();
 const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('rko-course-structure-v1'))[0].children[0]);
 assert.equal(stored.blocks.length,1);assert.equal(stored.blocks[0].documentVersion,1);
 assert.match(stored.blocks[0].html,/<table/);assert.match(stored.blocks[0].html,/data-asset=/);assert.doesNotMatch(stored.blocks[0].html,/blob:/);
-assert.match(stored.blocks[0].html,/data-caption="Подпись для ученика"/);assert.equal((stored.blocks[0].html.match(/<figure/g)||[]).length,3);
+assert.match(stored.blocks[0].html,/data-caption="Подпись для ученика"/);assert.match(stored.blocks[0].html,/data-caption-align="left"/);assert.equal((stored.blocks[0].html.match(/<figure/g)||[]).length,3);
 assert.match(stored.blocks[0].html,/Важная информация/);assert.match(stored.blocks[0].html,/Скрытое содержимое/);
 await page.locator('#editorBack').click();
 await page.goto('https://thexillix.github.io/rko-platform/#/editor/lesson-test');
@@ -119,6 +124,7 @@ await page.reload();
 await page.locator('#readerContent table').waitFor({timeout:20000});await page.locator('#readerContent figure img').first().waitFor();
 assert.equal(await page.locator('#readerContent table tr').count(),4);
 assert.equal(await page.locator('#readerContent figcaption').count(),1);assert.equal(await page.locator('#readerContent figcaption').textContent(),'Подпись для ученика');
+assert.equal(await page.locator('#readerContent figcaption').evaluate(el=>getComputedStyle(el).textAlign),'left');
 const readerMetrics=await page.locator('#readerContent').evaluate(el=>({width:el.getBoundingClientRect().width,titleFont:getComputedStyle(document.querySelector('#readerTitle')).fontSize,contentFont:getComputedStyle(el.querySelector('.lesson-document')).fontSize}));
 assert.deepEqual(previewMetrics,readerMetrics);
 await page.screenshot({path:'tests/screenshots/reader-desktop.png',fullPage:true});
@@ -147,9 +153,18 @@ await page.waitForTimeout(650);await page.screenshot({path:'tests/screenshots/re
 const railGap=await page.evaluate(()=>{
  const content=document.querySelector('#readerContent').getBoundingClientRect();
  const rail=document.querySelector('#readerProgram').getBoundingClientRect();
- return {gap:rail.left-content.right,visible:rail.width>0};
+ return {gap:rail.left-content.right,visible:rail.width>0,right:rail.right,viewport:innerWidth};
 });
 assert.equal(railGap.visible,true);assert.ok(railGap.gap>=50,`Outline gap is only ${railGap.gap}px`);
+assert.ok(railGap.right<=railGap.viewport-20,`Outline is clipped: right ${railGap.right}, viewport ${railGap.viewport}`);
+const flowMetrics=await page.evaluate(()=>{
+ const content=document.querySelector('#readerContent');const navigation=document.querySelector('.reader-navigation');
+ const c=content.getBoundingClientRect();const n=navigation.getBoundingClientRect();
+ const back=document.querySelector('.reader-back'),title=document.querySelector('.reader-title');
+ const reader=document.querySelector('#lessonReader');
+ return {contentBottom:c.bottom,navigationTop:n.top,contentHeight:c.height,contentScrollHeight:content.scrollHeight,contentOffsetHeight:content.offsetHeight,gridTemplateRows:getComputedStyle(reader).gridTemplateRows,rows:[back,title,content,navigation].map(el=>({row:getComputedStyle(el).gridRow,column:getComputedStyle(el).gridColumn,position:getComputedStyle(el).position,alignSelf:getComputedStyle(el).alignSelf,top:el.getBoundingClientRect().top,height:el.getBoundingClientRect().height}))};
+});
+assert.ok(flowMetrics.navigationTop>=flowMetrics.contentBottom+40,`Lesson navigation overlaps content: ${JSON.stringify(flowMetrics)}`);
 await page.locator('#learningPanel').evaluate(el=>{el.scrollTop=500;});await page.waitForTimeout(100);
 const stickyTop1=await page.locator('#readerProgram').evaluate(el=>el.getBoundingClientRect().top);
 await page.locator('#learningPanel').evaluate(el=>{el.scrollTop=900;});await page.waitForTimeout(100);
