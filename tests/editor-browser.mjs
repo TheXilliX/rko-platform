@@ -138,6 +138,23 @@ for(const width of [320,390,768,1024,1180,1440,1920]) {
  assert.equal(preview.titleFont,reader.titleFont,`Title font mismatch at ${width}`);
  assert.equal(preview.contentFont,reader.contentFont,`Content font mismatch at ${width}`);
 }
+// On wide desktop screens the outline occupies its own rail and remains pinned
+// while the lesson scrolls. It must never overlap full-width lesson media.
+await page.setViewportSize({width:1920,height:900});
+await page.goto('https://thexillix.github.io/rko-platform/#/lesson/lesson-test');
+await page.locator('#lessonReader.is-visible').waitFor();
+await page.waitForTimeout(650);await page.screenshot({path:'tests/screenshots/reader-wide.png',fullPage:false});
+const railGap=await page.evaluate(()=>{
+ const content=document.querySelector('#readerContent').getBoundingClientRect();
+ const rail=document.querySelector('#readerProgram').getBoundingClientRect();
+ return {gap:rail.left-content.right,visible:rail.width>0};
+});
+assert.equal(railGap.visible,true);assert.ok(railGap.gap>=50,`Outline gap is only ${railGap.gap}px`);
+await page.locator('#learningPanel').evaluate(el=>{el.scrollTop=500;});await page.waitForTimeout(100);
+const stickyTop1=await page.locator('#readerProgram').evaluate(el=>el.getBoundingClientRect().top);
+await page.locator('#learningPanel').evaluate(el=>{el.scrollTop=900;});await page.waitForTimeout(100);
+const stickyTop2=await page.locator('#readerProgram').evaluate(el=>el.getBoundingClientRect().top);
+assert.ok(Math.abs(stickyTop1-stickyTop2)<1,`Outline moved while scrolling: ${stickyTop1} -> ${stickyTop2}`);
 assert.deepEqual(errors,[]);
 console.log('PASS: editor features, responsive toolbar, exact preview/learner dimensions at 7 widths, deep-link reload/login. No page errors.');
 await browser.close();
