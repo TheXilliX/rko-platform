@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon-v2h.svg">
   <link rel="stylesheet" href="./src/styles/main.css?v=20261009-document-2">
   <link rel="stylesheet" href="./src/styles/conifer-cult.css?v=20261003-lesson-reader-3">
-  <link rel="stylesheet" href="./src/styles/lesson-composer.css?v=20261009-editor-4">
+  <link rel="stylesheet" href="./src/styles/lesson-composer.css?v=20261011-routes-1">
 </head>
 <body>
   <div class="app" id="app">
@@ -348,7 +348,10 @@
           </section>
 
           <aside class="editor-sidebar">
-            <button class="editor-preview-button" id="lessonPreviewButton" type="button"><span aria-hidden="true">◉</span> ПРЕДПРОСМОТР</button>
+            <button class="editor-preview-button" id="lessonPreviewButton" type="button" aria-pressed="false">
+              <svg class="eye-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/></svg>
+              <span>ПРЕДПРОСМОТР</span>
+            </button>
             <div class="editor-setting">
               <span>СОСТОЯНИЕ</span>
               <strong class="editor-state" id="editorState"><i></i><span>СОХРАНЕНО</span></strong>
@@ -380,11 +383,12 @@
     </section>
 
     <div class="lesson-preview-layer" id="lessonPreviewLayer" aria-hidden="true">
-      <section class="lesson-preview-card lesson-preview-reader" role="dialog" aria-modal="true" aria-labelledby="lessonPreviewTitle">
+      <section class="lesson-preview-card" role="dialog" aria-modal="true" aria-labelledby="lessonPreviewTitle">
         <button class="lesson-preview-close" id="lessonPreviewClose" type="button" aria-label="Закрыть">×</button>
-        <button class="reader-back lesson-preview-back" id="lessonPreviewBack" type="button">← НАЗАД</button>
-        <h2 class="reader-title" id="lessonPreviewTitle"></h2>
-        <div class="reader-content lesson-preview-content" id="lessonPreviewContent"></div>
+        <div class="lesson-preview-reader">
+          <h2 class="reader-title" id="lessonPreviewTitle"></h2>
+          <div class="reader-content lesson-preview-content" id="lessonPreviewContent"></div>
+        </div>
       </section>
     </div>
 
@@ -512,6 +516,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/scripts/app.js?v=20261009-document-2"></script>
+  <script type="module" src="./src/scripts/app.js?v=20261011-routes-1"></script>
 </body>
 </html>
