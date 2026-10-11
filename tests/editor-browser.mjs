@@ -153,10 +153,12 @@ await page.waitForTimeout(650);await page.screenshot({path:'tests/screenshots/re
 const railGap=await page.evaluate(()=>{
  const content=document.querySelector('#readerContent').getBoundingClientRect();
  const rail=document.querySelector('#readerProgram').getBoundingClientRect();
- return {gap:rail.left-content.right,visible:rail.width>0,right:rail.right,viewport:innerWidth};
+ const back=document.querySelector('.reader-back').getBoundingClientRect();
+ return {gap:rail.left-content.right,visible:rail.width>0,right:rail.right,viewport:innerWidth,backRight:back.right,contentLeft:content.left};
 });
 assert.equal(railGap.visible,true);assert.ok(railGap.gap>=50,`Outline gap is only ${railGap.gap}px`);
 assert.ok(railGap.right<=railGap.viewport-20,`Outline is clipped: right ${railGap.right}, viewport ${railGap.viewport}`);
+assert.ok(railGap.backRight<=railGap.contentLeft-12,`Back button overlaps lesson: ${JSON.stringify(railGap)}`);
 const flowMetrics=await page.evaluate(()=>{
  const content=document.querySelector('#readerContent');const navigation=document.querySelector('.reader-navigation');
  const c=content.getBoundingClientRect();const n=navigation.getBoundingClientRect();
