@@ -1,4 +1,4 @@
-import { createLessonComposer, hydrateDocumentAssets } from './lesson-composer.bundle.js?v=20261011-media-dnd-1';
+import { createLessonComposer, hydrateDocumentAssets } from './lesson-composer.bundle.js?v=20261011-editor-nav-2';
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const splash = $("#splash");
@@ -2472,8 +2472,8 @@ function updateEditorState() {
   const changed = JSON.stringify(editorDraft) !== JSON.stringify(editorOriginal);
   editorState.classList.toggle("is-changed", changed);
   const editorStateLabel = editorState.querySelector("span");
-  if (editorStateLabel) editorStateLabel.textContent = changed ? "ИЗМЕНЕНО" : "СОХРАНЕНО";
-  editorDirtyIndicator?.classList.toggle("is-visible", changed);
+  if (editorStateLabel) editorStateLabel.textContent = changed ? "НЕ СОХРАНЕНО" : "СОХРАНЕНО";
+  editorDirtyIndicator?.classList.remove("is-visible");
   saveLesson.classList.toggle("is-enabled", changed);
 }
 
