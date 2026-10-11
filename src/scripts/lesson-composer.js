@@ -72,14 +72,17 @@ export async function hydrateDocumentAssets(root, getAsset, downloadsAllowed=tru
       const link=document.createElement('a'); link.href=url; link.download=figure.dataset.filename||'file'; link.textContent=figure.dataset.filename||'Скачать файл'; figure.append(link);
     } else if (kind==='file') figure.textContent=figure.dataset.filename||'Вложение';
     if (['image','video'].includes(kind) && figure.dataset.caption) {
-      const caption = document.createElement('figcaption'); caption.textContent = figure.dataset.caption; figure.append(caption);
+      const caption = document.createElement('figcaption');
+      caption.textContent = figure.dataset.caption;
+      caption.style.textAlign = ['left','center','right'].includes(figure.dataset.captionAlign) ? figure.dataset.captionAlign : 'center';
+      figure.append(caption);
     }
   }));
   return urls;
 }
 
 export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,putAsset,onError}) {
-  let disposed=false, openMenu=null;
+  let disposed=false, openMenu=null, activeCaptionPos=null;
   const cleanups=[];
   const Asset=Node.create({
     name:'lessonAsset',group:'block',atom:true,draggable:true,
@@ -88,6 +91,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       kind:{default:'file',parseHTML:e=>e.dataset.kind,renderHTML:a=>({'data-kind':a.kind})},
       filename:{default:'',parseHTML:e=>e.dataset.filename,renderHTML:a=>({'data-filename':a.filename})},
       caption:{default:'',parseHTML:e=>e.dataset.caption,renderHTML:a=>({'data-caption':a.caption})},
+      captionAlign:{default:'center',parseHTML:e=>e.dataset.captionAlign||'center',renderHTML:a=>({'data-caption-align':a.captionAlign})},
     };},
     parseHTML(){return [{tag:'figure[data-asset]'}];},
     renderHTML({HTMLAttributes}){return ['figure',mergeAttributes(HTMLAttributes,{class:'document-asset'})];},
@@ -99,8 +103,9 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       captionInput.type='text';captionInput.className='document-asset-caption-input';captionInput.placeholder='Добавить подпись';captionInput.setAttribute('aria-label','Подпись к медиафайлу');
       const syncNode=nextNode=>{
         currentNode=nextNode;
-        Object.assign(dom.dataset,{asset:nextNode.attrs.asset,kind:nextNode.attrs.kind,filename:nextNode.attrs.filename,caption:nextNode.attrs.caption||''});
+        Object.assign(dom.dataset,{asset:nextNode.attrs.asset,kind:nextNode.attrs.kind,filename:nextNode.attrs.filename,caption:nextNode.attrs.caption||'',captionAlign:nextNode.attrs.captionAlign||'center'});
         captionInput.value=nextNode.attrs.caption||'';
+        captionInput.style.textAlign=['left','center','right'].includes(nextNode.attrs.captionAlign)?nextNode.attrs.captionAlign:'center';
         captionInput.hidden=!['image','video'].includes(nextNode.attrs.kind);
       };
       syncNode(node);dom.append(preview,captionInput);
@@ -119,6 +124,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
         dom.dataset.caption=caption;
         nodeEditor.view.dispatch(nodeEditor.state.tr.setNodeMarkup(pos,undefined,{...currentNode.attrs,caption}));
       });
+      captionInput.addEventListener('focus',()=>{const pos=getPos();activeCaptionPos=typeof pos==='number'?pos:null;});
       return {
         dom,
         stopEvent:event=>captionInput.contains(event.target),
@@ -135,6 +141,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
     editorProps:{
       attributes:{class:'lesson-document',role:'textbox','aria-label':'Содержимое урока','aria-multiline':'true',spellcheck:'true'},
       handleKeyDown:(_view,event)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();showMenu('link');return true;}return false;},
+      handleClick:()=>{activeCaptionPos=null;return false;},
       handleDOMEvents:{
         dragenter:(view,event)=>{if(event.dataTransfer?.types?.includes('Files'))view.dom.classList.add('is-file-dragover');return false;},
         dragover:(view,event)=>{if(event.dataTransfer?.types?.includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';view.dom.classList.add('is-file-dragover');}return false;},
@@ -159,7 +166,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       const content=[];
       for(const file of files){
         const id='asset-'+crypto.randomUUID();await putAsset(id,file);if(disposed)return;
-        content.push({type:'lessonAsset',attrs:{asset:id,kind:fileKind(file),filename:file.name,caption:''}},{type:'paragraph'});
+        content.push({type:'lessonAsset',attrs:{asset:id,kind:fileKind(file),filename:file.name,caption:'',captionAlign:'center'}},{type:'paragraph'});
       }
       const chain=editor.chain().focus();
       if(typeof position==='number')chain.insertContentAt(position,content).run();else chain.insertContent(content).run();
@@ -170,6 +177,11 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
     if(name==='heading') chain.toggleHeading({level:value}).run();
     else if(name==='color') chain.setColor(value).run();
     else if(name==='highlight') chain.toggleHighlight({color:value}).run();
+    else if(name==='align'&&typeof activeCaptionPos==='number') {
+      const node=editor.state.doc.nodeAt(activeCaptionPos);
+      if(node?.type.name==='lessonAsset')editor.view.dispatch(editor.state.tr.setNodeMarkup(activeCaptionPos,undefined,{...node.attrs,captionAlign:value}));
+      else {activeCaptionPos=null;chain.setTextAlign(value).run();}
+    }
     else if(name==='align') chain.setTextAlign(value).run();
     else if(name==='small') chain.setFontSize('14px').run();
     else if(name==='spoiler') chain.toggleMark('spoiler').run();
