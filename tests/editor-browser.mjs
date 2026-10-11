@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage();
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
-page.on('dialog',async dialog=>{if(dialog.type()==='prompt') await dialog.accept(''); else await dialog.dismiss();});
+let promptDialogs=0;page.on('dialog',async dialog=>{if(dialog.type()==='prompt')promptDialogs++;await dialog.dismiss();});
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2'};
 await context.route('**/*',async route=>{
  const url=new URL(route.request().url());
@@ -64,20 +64,36 @@ await page.keyboard.press('Control+End');await page.keyboard.press('ArrowDown');
 await page.locator('[data-menu="link"]').click();
 await page.locator('.composer-link-form [name="label"]').fill('Перейти к уроку');await page.locator('.composer-link-form [name="url"]').fill('/lesson/lesson-test');await page.getByRole('button',{name:'Вставить ссылку',exact:true}).click();
 assert.equal(await page.locator('.tiptap a').last().getAttribute('href'),'/lesson/lesson-test');
-// Native media chooser inserts an actual image, with no separate editor block.
+// Native media chooser inserts an actual image and exposes an inline caption field.
 await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.locator('[data-menu="media"]').click();
 const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Фото или видео',exact:true}).click();
 await (await chooser).setFiles({name:'sample.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
 await page.locator('.tiptap figure img').waitFor();
+assert.equal(promptDialogs,0);
+const firstCaption=page.locator('.document-asset-caption-input').first();
+assert.equal(await firstCaption.getAttribute('placeholder'),'Добавить подпись');
+await firstCaption.fill('Подпись для ученика');
+// Files can also be dropped from the desktop. Multiple images/videos are accepted in one drop.
+await page.locator('.tiptap').evaluate((target,pngBytes)=>{
+ const transfer=new DataTransfer();
+ transfer.items.add(new File([new Uint8Array(pngBytes)],'drop.png',{type:'image/png'}));
+ transfer.items.add(new File([new Uint8Array([0,0,0,20,102,116,121,112])],'drop.mp4',{type:'video/mp4'}));
+ const init={bubbles:true,cancelable:true,dataTransfer:transfer,clientX:target.getBoundingClientRect().left+40,clientY:target.getBoundingClientRect().bottom-20};
+ target.dispatchEvent(new DragEvent('dragenter',init));target.dispatchEvent(new DragEvent('dragover',init));target.dispatchEvent(new DragEvent('drop',init));
+},[137,80,78,71,13,10,26,10]);
+await page.locator('.document-asset-editor[data-kind="image"]').nth(1).waitFor();
+await page.locator('.document-asset-editor[data-kind="video"]').waitFor();
+assert.equal(await page.locator('.document-asset-caption-input').count(),3);
 await page.locator('#saveLesson').click();
 const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('rko-course-structure-v1'))[0].children[0]);
 assert.equal(stored.blocks.length,1);assert.equal(stored.blocks[0].documentVersion,1);
 assert.match(stored.blocks[0].html,/<table/);assert.match(stored.blocks[0].html,/data-asset=/);assert.doesNotMatch(stored.blocks[0].html,/blob:/);
+assert.match(stored.blocks[0].html,/data-caption="Подпись для ученика"/);assert.equal((stored.blocks[0].html.match(/<figure/g)||[]).length,3);
 assert.match(stored.blocks[0].html,/Важная информация/);assert.match(stored.blocks[0].html,/Скрытое содержимое/);
 await page.locator('#editorBack').click();
 await page.goto('https://thexillix.github.io/rko-platform/#/editor/lesson-test');
 await page.locator('#editorPage.is-active').waitFor();
-assert.equal(await page.locator('.tiptap table tr').count(),4);await page.locator('.tiptap figure img').waitFor();
+assert.equal(await page.locator('.tiptap table tr').count(),4);await page.locator('.tiptap figure img').first().waitFor();
 await page.screenshot({path:'tests/screenshots/editor-desktop.png',fullPage:true});
 for(const width of [320,375,390,768,1024,1440,1920]) {
  await page.setViewportSize({width,height:900});
@@ -100,8 +116,9 @@ assert.match(page.url(),/#\/editor\/lesson-test$/);
 await page.locator('#editorRoleLabel').click();
 await page.goto('https://thexillix.github.io/rko-platform/#/lesson/lesson-test');
 await page.reload();
-await page.locator('#readerContent table').waitFor({timeout:20000});await page.locator('#readerContent figure img').waitFor();
+await page.locator('#readerContent table').waitFor({timeout:20000});await page.locator('#readerContent figure img').first().waitFor();
 assert.equal(await page.locator('#readerContent table tr').count(),4);
+assert.equal(await page.locator('#readerContent figcaption').count(),1);assert.equal(await page.locator('#readerContent figcaption').textContent(),'Подпись для ученика');
 const readerMetrics=await page.locator('#readerContent').evaluate(el=>({width:el.getBoundingClientRect().width,titleFont:getComputedStyle(document.querySelector('#readerTitle')).fontSize,contentFont:getComputedStyle(el.querySelector('.lesson-document')).fontSize}));
 assert.deepEqual(previewMetrics,readerMetrics);
 await page.screenshot({path:'tests/screenshots/reader-desktop.png',fullPage:true});
