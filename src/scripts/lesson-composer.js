@@ -71,7 +71,7 @@ export async function hydrateDocumentAssets(root, getAsset, downloadsAllowed=tru
     if (downloadsAllowed && kind !== 'image') {
       const link=document.createElement('a'); link.href=url; link.download=figure.dataset.filename||'file'; link.textContent=figure.dataset.filename||'Скачать файл'; figure.append(link);
     } else if (kind==='file') figure.textContent=figure.dataset.filename||'Вложение';
-    if (kind === 'image' && figure.dataset.caption) {
+    if (['image','video'].includes(kind) && figure.dataset.caption) {
       const caption = document.createElement('figcaption'); caption.textContent = figure.dataset.caption; figure.append(caption);
     }
   }));
@@ -91,14 +91,40 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
     };},
     parseHTML(){return [{tag:'figure[data-asset]'}];},
     renderHTML({HTMLAttributes}){return ['figure',mergeAttributes(HTMLAttributes,{class:'document-asset'})];},
-    addNodeView(){return ({node})=>{
-      const dom=document.createElement('figure'); dom.className='document-asset'; dom.contentEditable='false';
-      Object.assign(dom.dataset,{asset:node.attrs.asset,kind:node.attrs.kind,filename:node.attrs.filename,caption:node.attrs.caption||''});
-      dom.textContent='Загрузка вложения…';
-      let dead=false, urls=[];
-      const wrapper=document.createElement('div'); wrapper.append(dom);
-      hydrateDocumentAssets(wrapper,getAsset).then(result=>{urls=result;if(dead) urls.forEach(URL.revokeObjectURL);});
-      return {dom,destroy(){dead=true;urls.forEach(URL.revokeObjectURL);}};
+    addNodeView(){return ({node,getPos,editor:nodeEditor})=>{
+      let currentNode=node,dead=false,urls=[];
+      const dom=document.createElement('figure'); dom.className='document-asset document-asset-editor'; dom.contentEditable='false';
+      const preview=document.createElement('div'); preview.className='document-asset-preview'; preview.textContent='Загрузка вложения…';
+      const captionInput=document.createElement('input');
+      captionInput.type='text';captionInput.className='document-asset-caption-input';captionInput.placeholder='Добавить подпись';captionInput.setAttribute('aria-label','Подпись к медиафайлу');
+      const syncNode=nextNode=>{
+        currentNode=nextNode;
+        Object.assign(dom.dataset,{asset:nextNode.attrs.asset,kind:nextNode.attrs.kind,filename:nextNode.attrs.filename,caption:nextNode.attrs.caption||''});
+        captionInput.value=nextNode.attrs.caption||'';
+        captionInput.hidden=!['image','video'].includes(nextNode.attrs.kind);
+      };
+      syncNode(node);dom.append(preview,captionInput);
+      const scratch=document.createElement('div');
+      const mediaFigure=document.createElement('figure');
+      Object.assign(mediaFigure.dataset,{asset:node.attrs.asset,kind:node.attrs.kind,filename:node.attrs.filename,caption:''});
+      scratch.append(mediaFigure);
+      hydrateDocumentAssets(scratch,getAsset,false).then(result=>{
+        urls=result;
+        if(dead){urls.forEach(URL.revokeObjectURL);return;}
+        preview.replaceChildren(...mediaFigure.childNodes);
+      });
+      captionInput.addEventListener('input',()=>{
+        const pos=getPos();if(typeof pos!=='number')return;
+        const caption=captionInput.value;
+        dom.dataset.caption=caption;
+        nodeEditor.view.dispatch(nodeEditor.state.tr.setNodeMarkup(pos,undefined,{...currentNode.attrs,caption}));
+      });
+      return {
+        dom,
+        stopEvent:event=>captionInput.contains(event.target),
+        update:nextNode=>{if(nextNode.type!==currentNode.type)return false;syncNode(nextNode);return true;},
+        destroy(){dead=true;urls.forEach(URL.revokeObjectURL);}
+      };
     };},
   });
   const editor=new Editor({
@@ -106,9 +132,39 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
     extensions:[StarterKit.configure({link:{openOnClick:false,autolink:true,HTMLAttributes:{rel:'noopener noreferrer',target:null}}}),TableKit.configure({table:{resizable:false}}),TextStyleKit,Highlight.configure({multicolor:true}),TextAlign.configure({types:['heading','paragraph']}),TaskList,TaskItem.configure({nested:true}),Image,Subscript,Superscript,Details.configure({persist:true}),DetailsContent,DetailsSummary,Callout,Spoiler,Asset],
     content:legacyLessonHTML(blocks),
     parseOptions:{preserveWhitespace:'full'},
-    editorProps:{attributes:{class:'lesson-document',role:'textbox','aria-label':'Содержимое урока','aria-multiline':'true',spellcheck:'true'},handleKeyDown:(_view,event)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();showMenu('link');return true;}return false;}},
+    editorProps:{
+      attributes:{class:'lesson-document',role:'textbox','aria-label':'Содержимое урока','aria-multiline':'true',spellcheck:'true'},
+      handleKeyDown:(_view,event)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();showMenu('link');return true;}return false;},
+      handleDOMEvents:{
+        dragenter:(view,event)=>{if(event.dataTransfer?.types?.includes('Files'))view.dom.classList.add('is-file-dragover');return false;},
+        dragover:(view,event)=>{if(event.dataTransfer?.types?.includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';view.dom.classList.add('is-file-dragover');}return false;},
+        dragleave:(view,event)=>{if(!view.dom.contains(event.relatedTarget))view.dom.classList.remove('is-file-dragover');return false;}
+      },
+      handleDrop:(view,event,_slice,moved)=>{
+        view.dom.classList.remove('is-file-dragover');
+        if(moved||!event.dataTransfer?.files?.length)return false;
+        const files=[...event.dataTransfer.files].filter(file=>file.type.startsWith('image/')||file.type.startsWith('video/'));
+        if(!files.length)return false;
+        event.preventDefault();
+        const position=view.posAtCoords({left:event.clientX,top:event.clientY})?.pos??view.state.selection.from;
+        void insertFiles(files,position);
+        return true;
+      }
+    },
     onUpdate:({editor})=>{onChange(editor.getHTML());sync();},onSelectionUpdate:()=>sync(),
   });
+  const fileKind=file=>file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';
+  const insertFiles=async(files,position=null)=>{
+    try {
+      const content=[];
+      for(const file of files){
+        const id='asset-'+crypto.randomUUID();await putAsset(id,file);if(disposed)return;
+        content.push({type:'lessonAsset',attrs:{asset:id,kind:fileKind(file),filename:file.name,caption:''}},{type:'paragraph'});
+      }
+      const chain=editor.chain().focus();
+      if(typeof position==='number')chain.insertContentAt(position,content).run();else chain.insertContent(content).run();
+    } catch { onError('Не удалось добавить файл. Проверьте свободное место.'); }
+  };
   const command=(name,value)=>{
     const chain=editor.chain().focus();
     if(name==='heading') chain.toggleHeading({level:value}).run();
@@ -186,7 +242,7 @@ export function createLessonComposer({element,toolbar,blocks,onChange,getAsset,p
       [['Фото или видео','image/*,video/*'],['Аудиофайл','audio/*'],['Файл','']].forEach(([label,accept])=>{
         const b=document.createElement('button');b.type='button';b.className='composer-menu-item';b.textContent=label;b.onclick=()=>{
           const input=document.createElement('input');input.type='file';input.accept=accept;
-          input.onchange=async()=>{const file=input.files?.[0];if(!file||disposed)return;try{const id='asset-'+crypto.randomUUID();await putAsset(id,file);if(disposed)return;const kind=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';const caption=kind==='image'?(window.prompt('Подпись к изображению (необязательно)','')||''):'';editor.chain().focus().insertContent([{type:'lessonAsset',attrs:{asset:id,kind,filename:file.name,caption}},{type:'paragraph'}]).run();}catch{onError('Не удалось добавить файл. Проверьте свободное место.');}};input.click();closeMenu();};menu.append(b);
+          input.multiple=true;input.onchange=()=>{const files=[...(input.files||[])];if(files.length&&!disposed)void insertFiles(files);};input.click();closeMenu();};menu.append(b);
       });
     }
     const trigger=toolbar.querySelector(`[data-menu="${key}"]`);const rect=toolbar.getBoundingClientRect();
