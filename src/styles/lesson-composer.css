@@ -51,6 +51,8 @@
 .composer-content {padding:16px 32px 40px;min-height:540px}
 .lesson-document {font:17px/1.75 Arial,sans-serif;letter-spacing:normal;text-transform:none;text-align:left;overflow-wrap:anywhere;word-break:normal;white-space:pre-wrap;min-width:0;max-width:100%;color:#292929}
 .composer-content .lesson-document {min-height:480px;outline:0;user-select:text;-webkit-user-select:text}
+.composer-content .lesson-document.is-file-dragover {position:relative;outline:2px dashed #d58d32;outline-offset:10px;border-radius:12px;background:#fff8ec}
+.composer-content .lesson-document.is-file-dragover:after {content:'ОТПУСТИТЕ ФОТО ИЛИ ВИДЕО';position:fixed;left:50%;top:50%;z-index:40;transform:translate(-50%,-50%);padding:13px 20px;border-radius:999px;background:#292929;color:#fffefa;font:700 11px/1 Arial,sans-serif;letter-spacing:.08em;pointer-events:none;box-shadow:0 12px 36px #29292925}
 .lesson-document p {margin:0 0 16px;min-height:1.75em;text-align:inherit}
 .lesson-document h1,.lesson-document h2,.lesson-document h3,.lesson-document h4,.lesson-document h5,.lesson-document h6 {font-family:Arial,sans-serif;text-transform:none;letter-spacing:-.025em;text-align:inherit;line-height:1.3;margin:28px 0 14px;overflow-wrap:anywhere;max-width:100%}
 .lesson-document h1 {font-size:34px}.lesson-document h2 {font-size:29px}.lesson-document h3 {font-size:25px}.lesson-document h4 {font-size:22px}.lesson-document h5 {font-size:19px}.lesson-document h6 {font-size:17px}
@@ -78,6 +80,13 @@
 .lesson-document figcaption {margin-top:8px;color:#77756e;font:14px/1.45 Arial,sans-serif;text-align:center}
 .lesson-document audio {max-width:100%}
 .lesson-document figure {margin:24px 0}
+.composer-content .document-asset-editor {display:block;max-width:100%;padding:0;margin:24px 0;outline:none}
+.composer-content .document-asset-preview {display:block;min-height:44px;color:#8d8b83;font:14px/1.5 Arial,sans-serif;text-align:center}
+.composer-content .document-asset-preview img,.composer-content .document-asset-preview video {display:block;margin:0 auto}
+.composer-content .document-asset-caption-input {display:block;width:100%;box-sizing:border-box;margin:8px 0 0;padding:5px 8px;border:0;border-radius:7px;outline:0;background:transparent;color:#77756e;font:14px/1.45 Arial,sans-serif;text-align:center;transition:background .18s,color .18s}
+.composer-content .document-asset-caption-input::placeholder {color:#aaa79f;opacity:1}
+.composer-content .document-asset-caption-input:hover,.composer-content .document-asset-caption-input:focus {background:#f5f2eb;color:#292929}
+.composer-content .document-asset-caption-input[hidden] {display:none}
 .lesson-document figure>a {display:block;font-size:14px}
 .lesson-document hr {border:0;border-top:1px solid #d9d5cc;margin:30px 0}
 .lesson-document .tableWrapper {border:1px solid #dcd8ce;border-radius:14px;overflow:hidden;margin:20px 0}
