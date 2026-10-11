@@ -172,10 +172,12 @@
     justify-self:stretch!important;
   }
   .lesson-reader>.reader-back {
+    grid-column:1!important;
     grid-row:1!important;
     width:max-content!important;
     max-width:100%!important;
-    justify-self:start!important;
+    justify-self:end!important;
+    margin-right:24px!important;
   }
   .lesson-reader>.reader-title {grid-row:2!important}
   .lesson-reader>.reader-content {grid-row:3!important}
