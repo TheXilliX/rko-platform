@@ -146,3 +146,64 @@
 /* Preview uses the same 1080px lesson column as the learner view. */
 @media(min-width:1181px){.lesson-preview-card{width:min(1480px,calc(100vw - 48px))}.lesson-preview-reader,.lesson-preview-reader .reader-title,.lesson-preview-reader .reader-content{width:min(1080px,calc(min(92vw,1600px) - 328px));max-width:1080px}}
 @media(min-width:1021px) and (max-width:1180px){.lesson-preview-reader,.lesson-preview-reader .reader-title,.lesson-preview-reader .reader-content{width:min(900px,100%);max-width:900px}}
+
+/* Reader outline: keep the lesson exactly centered and reserve a separate
+   rail on the right. On narrower desktops the rail is hidden instead of
+   squeezing or covering lesson media. */
+@media (min-width:1780px) {
+  .lesson-reader {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1080px) minmax(0,1fr)!important;
+    grid-auto-rows:auto!important;
+    column-gap:56px!important;
+    align-items:start!important;
+  }
+  .lesson-reader>.reader-back,
+  .lesson-reader>.reader-title,
+  .lesson-reader>.reader-content,
+  .lesson-reader>.reader-navigation {
+    grid-column:2!important;
+    width:100%!important;
+    max-width:1080px!important;
+    justify-self:stretch!important;
+  }
+  .lesson-reader>.reader-back {
+    width:max-content!important;
+    max-width:100%!important;
+    justify-self:start!important;
+  }
+  .lesson-reader>.reader-program {
+    display:block!important;
+    grid-column:3!important;
+    grid-row:1 / span 4!important;
+    position:sticky!important;
+    top:18px!important;
+    right:auto!important;
+    left:auto!important;
+    align-self:start!important;
+    justify-self:start!important;
+    width:280px!important;
+    max-width:280px!important;
+    margin:0!important;
+  }
+}
+@media (min-width:1181px) and (max-width:1779px) {
+  .lesson-reader>.reader-program {display:none!important}
+}
+
+/* Closing: text fades first, then the lower edge moves up.
+   Opening: the panel unfolds first, then its text fades in. */
+.reader-program-children {
+  visibility:visible;
+  opacity:1;
+  transform:translateY(0);
+  max-height:1600px;
+  transition:max-height .46s cubic-bezier(.4,0,.2,1),opacity .25s ease .30s,transform .25s ease .30s,visibility 0s linear 0s!important;
+}
+.reader-program-children.is-collapsed {
+  visibility:hidden;
+  opacity:0;
+  transform:translateY(-5px);
+  max-height:0;
+  transition:max-height .42s cubic-bezier(.4,0,.2,1) .18s,opacity .18s ease,transform .18s ease,visibility 0s linear .60s!important;
+}
