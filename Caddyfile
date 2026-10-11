@@ -6,6 +6,16 @@ vlad2hard.ru, www.vlad2hard.ru {
   }
 
   root * /srv
-  try_files {path} /index.html
-  file_server
+
+  # Serve real assets normally. Every other client-side route must return
+  # the SPA shell so refreshing /lesson/... or /editor/... never becomes 404.
+  @static file
+  handle @static {
+    file_server
+  }
+
+  handle {
+    rewrite * /index.html
+    file_server
+  }
 }
