@@ -1,4 +1,4 @@
-import { createLessonComposer, hydrateDocumentAssets } from './lesson-composer.bundle.js';
+import { createLessonComposer, hydrateDocumentAssets } from './lesson-composer.bundle.js?v=20261011-media-dnd-1';
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const splash = $("#splash");
