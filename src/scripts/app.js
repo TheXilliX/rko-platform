@@ -78,7 +78,6 @@ const saveLesson = $("#saveLesson");
 const lessonPreviewButton = $("#lessonPreviewButton");
 const lessonPreviewLayer = $("#lessonPreviewLayer");
 const lessonPreviewClose = $("#lessonPreviewClose");
-const lessonPreviewBack = $("#lessonPreviewBack");
 const lessonPreviewTitle = $("#lessonPreviewTitle");
 const lessonPreviewContent = $("#lessonPreviewContent");
 const previousLesson = $("#previousLesson");
@@ -221,11 +220,21 @@ function normalizeHeadingBlock(block) {
 
 const API_BASE = "/api";
 const IS_GITHUB_PREVIEW = window.location.hostname === "thexillix.github.io";
-const routePath = (url = location) => url.hash.startsWith("#/") ? url.hash.slice(1) : url.pathname;
-const routeUrl = (path) => IS_GITHUB_PREVIEW ? "/rko-platform/#" + path : path;
+const routePath = (url = location) => {
+  const hash = String(url.hash || "");
+  const raw = hash.startsWith("#/") ? hash.slice(1) : String(url.pathname || "/").replace(/^\/rko-platform(?=\/|$)/, "") || "/";
+  const normalized = raw.startsWith("/") ? raw : `/${raw}`;
+  return normalized.length > 1 ? normalized.replace(/\/+$/, "") : normalized;
+};
+const routeUrl = (path) => IS_GITHUB_PREVIEW ? `/rko-platform/#${path}` : path;
+const navigateTo = (path, { replace = false } = {}) => {
+  const method = replace ? "replaceState" : "pushState";
+  if (routePath() !== path || replace) history[method]({ path }, "", routeUrl(path));
+};
 const PREVIEW_ACCOUNTS_KEY = "rko-preview-accounts-v1";
 const PREVIEW_ARCHIVE_KEY = "rko-preview-archive-v1";
 const PREVIEW_CONSENTS_KEY = "rko-preview-consents-v1";
+const PREVIEW_SESSION_KEY = "rko-preview-session-v1";
 const GITHUB_PREVIEW_ACCOUNTS = [
   { id: "preview-owner", firstName: "Влад", lastName: "2Hard", login: "admin", password: "admin", telegram: "@Vlad_2Hard", role: "owner", courseAccess: true },
   { id: "preview-student", firstName: "Тестовый", lastName: "Ученик", login: "student-demo", password: "student-demo", telegram: "@student", role: "student", courseAccess: false },
@@ -624,7 +633,7 @@ function triggerConiferMiniBurst() {
   window.setTimeout(() => coniferMiniOrigin?.classList.remove("is-burst"), 760);
 }
 
-function openConiferCult() {
+function openConiferCult({ historyMode = "push", immediate = false } = {}) {
   clearConiferTimers();
   coniferMiniOrigin?.classList.remove("is-burst");
   coniferWidget?.classList.add("is-fullscreen");
@@ -632,6 +641,12 @@ function openConiferCult() {
   void coniferScene?.offsetWidth;
   coniferScene?.classList.add("is-awake", "is-flight");
   coniferTreeButton?.classList.remove("is-pressing");
+  if (historyMode !== "none") navigateTo("/conifer", { replace: historyMode === "replace" });
+  if (immediate) {
+    coniferScene?.classList.remove("is-flight", "is-title");
+    coniferScene?.classList.add("is-regalia", "is-regalia-content");
+    return;
+  }
   coniferRitualTimers.push(window.setTimeout(() => coniferScene?.classList.add("is-title"), 360));
   coniferRitualTimers.push(window.setTimeout(() => {
     coniferScene?.classList.remove("is-title");
@@ -640,13 +655,14 @@ function openConiferCult() {
   coniferRitualTimers.push(window.setTimeout(() => coniferScene?.classList.add("is-regalia-content"), 2050));
 }
 
-function closeConiferCult() {
+function closeConiferCult({ historyMode = "push" } = {}) {
   clearConiferTimers();
   coniferPressCount = 0;
   coniferScene?.classList.remove("is-regalia-content", "is-regalia", "is-flight", "is-title", "is-awake");
   coniferHideTimer = window.setTimeout(() => {
     coniferWidget?.classList.remove("is-fullscreen");
   }, 760);
+  if (historyMode !== "none") navigateTo("/", { replace: historyMode === "replace" });
 }
 
 function setPage(activePage) {
@@ -771,14 +787,7 @@ function showDashboard(account) {
   renderStructure();
   setPage(dashboardPage);
   syncConiferAvailability();
-  const lessonMatch = routePath().match(/^\/lesson\/([^/]+)$/);
-  if (routePath() === "/offers") {
-    window.setTimeout(openOffers, 0);
-  } else if (lessonMatch) {
-    const found = findNode(savedStructure, decodeURIComponent(lessonMatch[1]));
-    if (found?.item?.type === "lesson") window.setTimeout(() => openLessonReader(found.item, { historyMode: "replace" }), 0);
-    else showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
-  }
+  window.setTimeout(() => applyCurrentRoute({ replaceInvalid: true }), 0);
 }
 
 function logoutFrom(button) {
@@ -791,6 +800,7 @@ function logoutFrom(button) {
       button.classList.remove("is-pressed");
       activePage.classList.remove("is-leaving");
       currentAccount = null;
+      if (IS_GITHUB_PREVIEW) sessionStorage.removeItem(PREVIEW_SESSION_KEY);
       fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
       lessonProgressState = {};
       readerProgramCollapsed = new Set();
@@ -799,7 +809,7 @@ function logoutFrom(button) {
   }, 210);
 }
 
-function setDashboardMode(nextMode) {
+function setDashboardMode(nextMode, { historyMode = "push", tab = "structure" } = {}) {
   if (!currentAccount || !isStaffAccount(currentAccount) || nextMode === dashboardMode || dashboardIsSwitching) return;
   clearTransitionTimer();
   dashboardIsSwitching = true;
@@ -816,7 +826,9 @@ function setDashboardMode(nextMode) {
   if (nextMode === "admin") {
     collapseAllStructure();
     renderStructure();
+    selectAdminTab(tab, { historyMode: "none" });
   }
+  if (historyMode !== "none") navigateTo(nextMode === "admin" ? `/admin/${tab}` : "/", { replace: historyMode === "replace" });
   window.setTimeout(() => adminMark.classList.remove("is-pressed"), 240);
   if (nextMode === "admin") requestAnimationFrame(updateTabIndicator);
   transitionTimer = window.setTimeout(() => {
@@ -824,6 +836,129 @@ function setDashboardMode(nextMode) {
     outgoing.setAttribute("aria-hidden", "true");
     dashboardIsSwitching = false;
   }, 560);
+}
+
+function selectAdminTab(tabName = "structure", { historyMode = "push" } = {}) {
+  const tab = adminTabs.find((item) => item.dataset.tab === tabName) || adminTabs[0];
+  if (!tab) return;
+  adminTabs.forEach((item) => item.classList.toggle("is-current", item === tab));
+  adminViews.forEach((view) => view.classList.toggle("is-current", view.dataset.adminView === tab.dataset.tab));
+  requestAnimationFrame(updateTabIndicator);
+  if (tab.dataset.tab === "accounts") renderAccounts();
+  if (historyMode !== "none") navigateTo(`/admin/${tab.dataset.tab}`, { replace: historyMode === "replace" });
+}
+
+function activateLearningShell() {
+  setPage(dashboardPage);
+  dashboardMode = "learning";
+  dashboardIsSwitching = false;
+  adminMark.classList.remove("is-admin-active", "is-pressed");
+  adminPanel.classList.remove("is-current", "is-leaving");
+  adminPanel.setAttribute("aria-hidden", "true");
+  learningPanel.classList.add("is-current");
+  learningPanel.classList.remove("is-leaving");
+  learningPanel.setAttribute("aria-hidden", "false");
+}
+
+function activateAdminShell(tabName = "structure") {
+  if (!isStaffAccount(currentAccount)) return false;
+  setPage(dashboardPage);
+  dashboardMode = "admin";
+  dashboardIsSwitching = false;
+  setConiferAvailability(false);
+  adminMark.classList.add("is-admin-active");
+  learningPanel.classList.remove("is-current", "is-leaving");
+  learningPanel.setAttribute("aria-hidden", "true");
+  adminPanel.classList.add("is-current");
+  adminPanel.classList.remove("is-leaving");
+  adminPanel.setAttribute("aria-hidden", "false");
+  collapseAllStructure();
+  renderStructure();
+  selectAdminTab(tabName, { historyMode: "none" });
+  return true;
+}
+
+function parseCoursePath(path) {
+  const match = path.match(/^\/course(?:\/(.+))?$/);
+  if (!match) return null;
+  const ids = match[1] ? match[1].split("/").map(decodeURIComponent) : [];
+  let items = savedStructure;
+  const valid = [];
+  for (const id of ids) {
+    const item = items.find((entry) => entry.id === id);
+    if (!item?.children) return null;
+    valid.push(id);
+    items = item.children;
+  }
+  return valid;
+}
+
+function closeRouteOverlays() {
+  $("#clubLayer")?.classList.remove("is-visible");
+  $("#clubLayer")?.setAttribute("aria-hidden", "true");
+  closeLessonPreview();
+  resetConiferCult();
+}
+
+function applyCurrentRoute({ replaceInvalid = false } = {}) {
+  if (!currentAccount) return;
+  const path = routePath();
+  closeRouteOverlays();
+
+  const editorMatch = path.match(/^\/editor\/([^/]+)$/);
+  if (editorMatch) {
+    const id = decodeURIComponent(editorMatch[1]);
+    const found = findNode(draftStructure, id);
+    if (isStaffAccount(currentAccount) && found?.item?.type === "lesson") {
+      activateAdminShell("structure");
+      openLessonEditor(id, { historyMode: "none" });
+      return;
+    }
+  }
+
+  const adminMatch = path.match(/^\/admin(?:\/([^/]+))?$/);
+  if (adminMatch && isStaffAccount(currentAccount)) {
+    const tab = ["structure", "accounts", "settings"].includes(adminMatch[1]) ? adminMatch[1] : "structure";
+    activateAdminShell(tab);
+    return;
+  }
+
+  activateLearningShell();
+  const lessonMatch = path.match(/^\/lesson\/([^/]+)$/);
+  if (lessonMatch) {
+    const found = findNode(savedStructure, decodeURIComponent(lessonMatch[1]));
+    if (found?.item?.type === "lesson") {
+      openLessonReader(found.item, { historyMode: "none" });
+      return;
+    }
+  }
+  if (path === "/offers") {
+    openOffers({ historyMode: "none" });
+    return;
+  }
+  if (path === "/club") {
+    coursePath = [];
+    renderCourse();
+    openClub({ historyMode: "none" });
+    return;
+  }
+  if (path === "/conifer") {
+    coursePath = [];
+    renderCourse();
+    openConiferCult({ historyMode: "none", immediate: true });
+    return;
+  }
+  const restoredCoursePath = parseCoursePath(path);
+  if (path === "/" || restoredCoursePath) {
+    coursePath = restoredCoursePath || [];
+    renderCourse();
+    return;
+  }
+
+  coursePath = [];
+  renderCourse();
+  if (replaceInvalid) navigateTo("/", { replace: true });
+  showNotice("СТРАНИЦА НЕ НАЙДЕНА", "error");
 }
 
 function collapseAllStructure() {
@@ -1794,6 +1929,10 @@ function renderCourse() {
   }, 90);
 }
 
+function courseRoute(path = coursePath) {
+  return path.length ? `/course/${path.map((id) => encodeURIComponent(id)).join("/")}` : "/";
+}
+
 function handleCourseClick(event) {
   const row = event.target.closest("[data-course-id]");
   if (!row) return;
@@ -1816,7 +1955,11 @@ function handleCourseClick(event) {
       lessonProgressState[id] = "visited";
       saveLessonProgress();
     }
-    window.setTimeout(() => { coursePath.push(id); renderCourse(); }, 170);
+    window.setTimeout(() => {
+      coursePath.push(id);
+      renderCourse();
+      navigateTo(courseRoute());
+    }, 170);
   } else window.setTimeout(() => openLessonReader(found.item), 170);
 }
 
@@ -1937,6 +2080,7 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
     return;
   }
   const hierarchy = hierarchyFor(lesson.id) ?? [lesson];
+  coursePath = hierarchy.filter((item) => item.type !== "lesson").map((item) => item.id);
   markLessonVisited(lesson.id);
   courseBrowser.classList.add("is-hidden");
   learningTitle.classList.add("is-reader-hidden");
@@ -1951,9 +2095,7 @@ function openLessonReader(lesson, { historyMode = "push" } = {}) {
   syncConiferAvailability();
   readerTitle.textContent = lesson.title;
   readerTitle.dataset.lessonId = lesson.id;
-  const nextUrl = routeUrl(`/lesson/${encodeURIComponent(lesson.id)}`);
-  if (historyMode === "replace") history.replaceState({ lessonId: lesson.id }, "", nextUrl);
-  else if (routePath() !== nextUrl) history.pushState({ lessonId: lesson.id }, "", nextUrl);
+  if (historyMode !== "none") navigateTo(`/lesson/${encodeURIComponent(lesson.id)}`, { replace: historyMode === "replace" });
   renderLessonNavigation(lesson);
   renderReaderProgram(lesson.id);
   renderReaderBlocks(lesson.blocks ?? [], lesson.allowDownloads);
@@ -2101,7 +2243,19 @@ async function renderReaderBlocks(blocks, downloadsAllowed = false) {
     }
     if (renderToken !== readerRenderToken) return;
     readerContent.appendChild(element);
+    normalizeInternalLessonLinks(element);
   }
+}
+
+function normalizeInternalLessonLinks(root) {
+  root?.querySelectorAll?.("a[href]").forEach((link) => {
+    const raw = link.getAttribute("href") || "";
+    let url;
+    try { url = new URL(raw, window.location.href); } catch { return; }
+    const match = routePath(url).match(/^\/lesson\/([^/]+)$/) || url.pathname.match(/^\/lesson\/([^/]+)$/);
+    if (!match || url.origin !== window.location.origin) return;
+    link.setAttribute("href", routeUrl(`/lesson/${match[1]}`));
+  });
 }
 
 function openAssetDb() {
@@ -2243,7 +2397,7 @@ function renderLessonNavigation(lesson) {
   });
 }
 
-function openLessonEditor(id) {
+function openLessonEditor(id, { historyMode = "push" } = {}) {
   const found = findNode(draftStructure, id);
   if (!found || found.item.type !== "lesson") return;
   editorLessonId = id;
@@ -2268,6 +2422,7 @@ function openLessonEditor(id) {
   renderEditorBlocks();
   updateEditorState();
   setPage(editorPage);
+  if (historyMode !== "none") navigateTo(`/editor/${encodeURIComponent(id)}`, { replace: historyMode === "replace" });
 }
 
 function leaveEditorToCourse({ force = false } = {}) {
@@ -2284,6 +2439,7 @@ function leaveEditorToCourse({ force = false } = {}) {
   setPage(dashboardPage);
   renderCourse();
   if (dashboardMode === "admin") setDashboardMode("learning");
+  else navigateTo("/");
 }
 
 function closeLessonEditor() {
@@ -2301,6 +2457,7 @@ function closeLessonEditor() {
   adminPanel.classList.add("is-current");
   adminPanel.setAttribute("aria-hidden", "false");
   requestAnimationFrame(updateTabIndicator);
+  navigateTo("/admin/structure");
 }
 
 function updateEditorVisibility() {
@@ -2333,18 +2490,36 @@ function renderEditorBlocks() {
   });
 }
 
+function syncLessonPreviewGeometry() {
+  const previewReader = lessonPreviewLayer?.querySelector(".lesson-preview-reader");
+  if (!previewReader || !readerContent || !readerTitle) return;
+  const learnerWidth = readerContent.getBoundingClientRect().width;
+  if (learnerWidth > 0) {
+    previewReader.style.width = `${learnerWidth}px`;
+    previewReader.style.maxWidth = "100%";
+  }
+  const learnerTitleStyle = getComputedStyle(readerTitle);
+  lessonPreviewTitle.style.fontSize = learnerTitleStyle.fontSize;
+  lessonPreviewTitle.style.lineHeight = learnerTitleStyle.lineHeight;
+  lessonPreviewTitle.style.letterSpacing = learnerTitleStyle.letterSpacing;
+}
+
 async function openLessonPreview() {
   if (!editorDraft || !lessonComposer) return;
   lessonPreviewTitle.textContent = lessonNameInput.value.trim() || "Без названия";
   lessonPreviewContent.innerHTML = `<section class="reader-block reader-block--text lesson-document">${lessonComposer.getHTML()}</section>`;
+  normalizeInternalLessonLinks(lessonPreviewContent);
   lessonPreviewLayer.classList.add("is-visible");
   lessonPreviewLayer.setAttribute("aria-hidden", "false");
+  lessonPreviewButton?.setAttribute("aria-pressed", "true");
+  syncLessonPreviewGeometry();
   await hydrateDocumentAssets(lessonPreviewContent, getAsset, Boolean(editorDraft.allowDownloads));
 }
 
 function closeLessonPreview() {
   lessonPreviewLayer.classList.remove("is-visible");
   lessonPreviewLayer.setAttribute("aria-hidden", "true");
+  lessonPreviewButton?.setAttribute("aria-pressed", "false");
   lessonPreviewContent.replaceChildren();
 }
 
@@ -2415,6 +2590,7 @@ authForm.addEventListener("submit", async (event) => {
     const account = normalizeAccount(previewAccount);
     backendConnected = false;
     accountStore = normalizeAccounts(githubPreviewAccounts);
+    sessionStorage.setItem(PREVIEW_SESSION_KEY, account.id || account.login);
     passwordHelp.classList.remove("is-visible");
     const accepted = previewConsentAccepted(account);
     showWelcome(account, { required: !accepted, accepted, version: "1.0" });
@@ -2462,12 +2638,7 @@ exitConfirmSave?.addEventListener("click", async () => {
   leaveAdmin({ save: true });
 });
 exitConfirmLayer?.addEventListener("click", (event) => { if (event.target === exitConfirmLayer) closeExitConfirm(); });
-adminTabs.forEach((tab) => tab.addEventListener("click", () => {
-  adminTabs.forEach((item) => item.classList.toggle("is-current", item === tab));
-  adminViews.forEach((view) => view.classList.toggle("is-current", view.dataset.adminView === tab.dataset.tab));
-  updateTabIndicator();
-  if (tab.dataset.tab === "accounts") renderAccounts();
-}));
+adminTabs.forEach((tab) => tab.addEventListener("click", () => selectAdminTab(tab.dataset.tab)));
 structureRows.addEventListener("click", (event) => {
   const row = event.target.closest(".structure-row");
   if (!row || editingId) return;
@@ -2552,22 +2723,15 @@ courseGuideBack.addEventListener("click", () => {
   if (!coursePath.length) return;
   coursePath.pop();
   renderCourse();
+  navigateTo(courseRoute());
 });
 
 readerBack.addEventListener("click", () => {
-  history.pushState({ view: "course" }, "", routeUrl("/"));
+  navigateTo(courseRoute());
   renderCourse();
 });
-
-window.addEventListener("popstate", () => {
-  if (routePath() === "/offers" && currentAccount) return openOffers({ push: false });
-  const match = routePath().match(/^\/lesson\/([^/]+)$/);
-  if (match && currentAccount) {
-    const found = findNode(savedStructure, decodeURIComponent(match[1]));
-    if (found?.item?.type === "lesson") openLessonReader(found.item, { historyMode: "replace" });
-    else renderCourse();
-  } else if (currentAccount) renderCourse();
-});
+window.addEventListener("popstate", () => { if (currentAccount) applyCurrentRoute({ replaceInvalid: true }); });
+window.addEventListener("hashchange", () => { if (IS_GITHUB_PREVIEW && currentAccount) applyCurrentRoute({ replaceInvalid: true }); });
 
 readerProgramList?.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-program-toggle]");
@@ -2667,8 +2831,8 @@ allowWhenBlocked?.addEventListener("change", () => {
 saveLesson.addEventListener("click", saveEditorLesson);
 lessonPreviewButton?.addEventListener("click", openLessonPreview);
 lessonPreviewClose?.addEventListener("click", closeLessonPreview);
-lessonPreviewBack?.addEventListener("click", closeLessonPreview);
 lessonPreviewLayer?.addEventListener("click", (event) => { if (event.target === lessonPreviewLayer) closeLessonPreview(); });
+window.addEventListener("resize", () => { if (lessonPreviewLayer?.classList.contains("is-visible")) syncLessonPreviewGeometry(); });
 deleteLesson.addEventListener("click", () => openDeleteDialog(editorLessonId));
 defaultVisibility.addEventListener("click", () => {
   platformSettings.newItemsVisible = !platformSettings.newItemsVisible;
@@ -2783,7 +2947,7 @@ function fillClubSettingsForm() {
   $("#clubButtonTextSetting").value = club.buttonText;
   $("#clubChatSetting").value = club.chatUrl;
 }
-function openClub() {
+function openClub({ historyMode = "push" } = {}) {
   if (currentAccount?.courseAccess === false && platformSettings.clubAllowWhenBlocked !== true) return showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
   const club = clubSettings();
   $("#clubTitle").textContent = club.title.toUpperCase();
@@ -2794,11 +2958,13 @@ function openClub() {
   $("#clubChat").textContent = club.buttonText.toUpperCase();
   $("#clubLayer").classList.add("is-visible");
   $("#clubLayer").setAttribute("aria-hidden", "false");
+  if (historyMode !== "none") navigateTo("/club", { replace: historyMode === "replace" });
 }
 $("#clubButton")?.addEventListener("click", openClub);
 $("#clubClose")?.addEventListener("click", () => {
   $("#clubLayer").classList.remove("is-visible");
   $("#clubLayer").setAttribute("aria-hidden", "true");
+  navigateTo("/");
 });
 $("#saveClubSettings")?.addEventListener("click", () => {
   platformSettings.club = {
@@ -2854,16 +3020,16 @@ function saveOffers() {
   renderOffers(false);
   showNotice("ОФФЕРЫ СОХРАНЕНЫ", "success");
 }
-function openOffers({ push = true } = {}) {
+function openOffers({ historyMode = "push" } = {}) {
   if (currentAccount?.courseAccess === false && platformSettings.offersAllowWhenBlocked !== true) return showNotice("ЭТОТ МАТЕРИАЛ ПОКА НЕДОСТУПЕН", "error");
   renderOffers(false);
   $("#offersEdit").hidden = !isStaffAccount(currentAccount);
   setPage(offersPage);
-  if (push && routePath() !== "/offers") history.pushState({ view: "offers" }, "", routeUrl("/offers"));
+  if (historyMode !== "none") navigateTo("/offers", { replace: historyMode === "replace" });
 }
 $("#offersButton")?.addEventListener("click", openOffers);
-$("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", routeUrl("/")); });
-$("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); history.pushState({ view: "course" }, "", routeUrl("/")); });
+$("#offersBack")?.addEventListener("click", () => { setPage(dashboardPage); navigateTo("/"); renderCourse(); });
+$("#offersClose")?.addEventListener("click", () => { setPage(dashboardPage); navigateTo("/"); renderCourse(); });
 $("#offersEdit")?.addEventListener("click", () => renderOffers(true));
 $("#offersSave")?.addEventListener("click", saveOffers);
 $("#offersContent")?.addEventListener("click", (event) => {
@@ -3010,6 +3176,23 @@ async function restoreSession() {
   applyPlatformSettings();
   renderCourse();
   renderStructure();
+  if (IS_GITHUB_PREVIEW) {
+    const sessionId = sessionStorage.getItem(PREVIEW_SESSION_KEY);
+    const account = githubPreviewAccounts.find((item) => (item.id || item.login) === sessionId);
+    if (account) {
+      backendConnected = false;
+      accountStore = normalizeAccounts(githubPreviewAccounts);
+      splash.classList.add("is-gone");
+      const normalized = normalizeAccount(account);
+      if (!previewConsentAccepted(normalized)) {
+        setPage(authPage);
+        pendingAuthenticatedAccount = normalized;
+        pendingConsentState = { required: true, accepted: false, version: "1.0" };
+        openConsentLayer();
+      } else showDashboard(normalized);
+      return;
+    }
+  }
   try {
     const { response, body } = await apiRequest("/auth/session");
     if (response.ok && body?.account) {
