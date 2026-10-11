@@ -83,10 +83,11 @@
 .composer-content .document-asset-editor {display:block;max-width:100%;padding:0;margin:24px 0;outline:none}
 .composer-content .document-asset-preview {display:block;min-height:44px;color:#8d8b83;font:14px/1.5 Arial,sans-serif;text-align:center}
 .composer-content .document-asset-preview img,.composer-content .document-asset-preview video {display:block;margin:0 auto}
-.composer-content .document-asset-caption-input {display:block;width:100%;box-sizing:border-box;margin:8px 0 0;padding:5px 8px;border:0;border-radius:7px;outline:0;background:transparent;color:#77756e;font:14px/1.45 Arial,sans-serif;text-align:center;transition:background .18s,color .18s}
-.composer-content .document-asset-caption-input::placeholder {color:#aaa79f;opacity:1}
-.composer-content .document-asset-caption-input:hover,.composer-content .document-asset-caption-input:focus {background:#f5f2eb;color:#292929}
+.composer-content .document-asset-caption-input {display:block;width:100%;box-sizing:border-box;margin:8px 0 0;padding:5px 8px;border:0;border-radius:7px;outline:0;background:transparent;color:#77756e;font:14px/1.45 Arial,sans-serif;text-align:center;opacity:.72;transition:background .18s,color .18s,opacity .18s}
+.composer-content .document-asset-caption-input::placeholder {color:#aaa79f;opacity:.7}
+.composer-content .document-asset-caption-input:focus {background:#f5f2eb;color:#292929;opacity:1}
 .composer-content .document-asset-caption-input[hidden] {display:none}
+.composer-content .document-asset-editor.ProseMirror-selectednode {outline:none}
 .lesson-document figure>a {display:block;font-size:14px}
 .lesson-document hr {border:0;border-top:1px solid #d9d5cc;margin:30px 0}
 .lesson-document .tableWrapper {border:1px solid #dcd8ce;border-radius:14px;overflow:hidden;margin:20px 0}
@@ -151,10 +152,13 @@
    rail on the right. On narrower desktops the rail is hidden instead of
    squeezing or covering lesson media. */
 @media (min-width:1780px) {
+  .workspace {width:min(calc(100vw - 64px),1760px)!important;max-width:1760px!important}
   .lesson-reader {
     display:grid!important;
     grid-template-columns:minmax(0,1fr) minmax(0,1080px) minmax(0,1fr)!important;
-    grid-auto-rows:auto!important;
+    grid-template-rows:max-content max-content max-content max-content!important;
+    grid-auto-rows:max-content!important;
+    align-content:start!important;
     column-gap:56px!important;
     align-items:start!important;
   }
@@ -168,9 +172,19 @@
     justify-self:stretch!important;
   }
   .lesson-reader>.reader-back {
+    grid-row:1!important;
     width:max-content!important;
     max-width:100%!important;
     justify-self:start!important;
+  }
+  .lesson-reader>.reader-title {grid-row:2!important}
+  .lesson-reader>.reader-content {grid-row:3!important}
+  .lesson-reader>.reader-navigation {
+    grid-row:4!important;
+    position:static!important;
+    align-self:start!important;
+    margin-top:70px!important;
+    transform:none!important;
   }
   .lesson-reader>.reader-program {
     display:block!important;
@@ -198,12 +212,12 @@
   opacity:1;
   transform:translateY(0);
   max-height:1600px;
-  transition:max-height .46s cubic-bezier(.4,0,.2,1),opacity .25s ease .30s,transform .25s ease .30s,visibility 0s linear 0s!important;
+  transition:max-height .28s cubic-bezier(.4,0,.2,1),opacity .16s ease,transform .16s ease,visibility 0s linear 0s!important;
 }
 .reader-program-children.is-collapsed {
   visibility:hidden;
   opacity:0;
   transform:translateY(-5px);
   max-height:0;
-  transition:max-height .42s cubic-bezier(.4,0,.2,1) .18s,opacity .18s ease,transform .18s ease,visibility 0s linear .60s!important;
+  transition:max-height .26s cubic-bezier(.4,0,.2,1),opacity .14s ease,transform .14s ease,visibility 0s linear .27s!important;
 }
