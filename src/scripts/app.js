@@ -2271,6 +2271,19 @@ function openAssetDb() {
 }
 
 async function putAsset(id, file) {
+  if (backendConnected) {
+    const response = await fetch(`${API_BASE}/assets/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+        "X-File-Name": encodeURIComponent(file.name || "file"),
+      },
+      body: file,
+    });
+    if (!response.ok) throw new Error("asset_upload_failed");
+    return;
+  }
   const db = await openAssetDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction("assets", "readwrite");
@@ -2281,6 +2294,14 @@ async function putAsset(id, file) {
 }
 
 async function getAsset(id) {
+  if (backendConnected) {
+    try {
+      const response = await fetch(`${API_BASE}/assets/${encodeURIComponent(id)}`, { credentials: "include" });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      return { id, blob, name: "", type: blob.type };
+    } catch { return null; }
+  }
   try {
     const db = await openAssetDb();
     return await new Promise((resolve, reject) => {
