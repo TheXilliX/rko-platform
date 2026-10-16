@@ -129,6 +129,38 @@ app.get("/api/course", loadSessionAccount, async (_req, res) => {
   const doc = rows[0] || { structure: [], settings: {}, updated_at: null };
   res.json({ structure: doc.structure, settings: doc.settings, updatedAt: doc.updated_at });
 });
+
+app.put("/api/assets/:id", loadSessionAccount, requireStaff, express.raw({ type: "*/*", limit: "25mb" }), async (req, res) => {
+  const id = String(req.params.id || "");
+  const mimeType = String(req.headers["content-type"] || "application/octet-stream").slice(0, 255);
+  let fileName = "file";
+  try { fileName = decodeURIComponent(String(req.headers["x-file-name"] || "file")); } catch {}
+  fileName = fileName.replace(/[\r\n]/g, " ").slice(0, 500) || "file";
+  if (!/^asset-[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: "INVALID_ASSET_ID" });
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: "EMPTY_ASSET" });
+  const { rows } = await pool.query(`INSERT INTO lesson_assets (id,file_name,mime_type,data,size,uploaded_by,updated_at)
+    VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (id) DO UPDATE SET
+    file_name=EXCLUDED.file_name,mime_type=EXCLUDED.mime_type,data=EXCLUDED.data,size=EXCLUDED.size,
+    uploaded_by=EXCLUDED.uploaded_by,updated_at=NOW() RETURNING id,file_name,mime_type,size,updated_at`,
+    [id, fileName, mimeType, req.body, req.body.length, req.account.id]);
+  res.json({ asset: rows[0] });
+});
+
+app.get("/api/assets/:id", loadSessionAccount, async (req, res) => {
+  const { rows } = await pool.query("SELECT file_name,mime_type,data,size FROM lesson_assets WHERE id=$1", [req.params.id]);
+  const asset = rows[0];
+  if (!asset) return res.status(404).json({ error: "ASSET_NOT_FOUND" });
+  const safeInlineType = /^(image\/(?:jpeg|png|gif|webp|avif)|video\/(?:mp4|webm|quicktime)|audio\/(?:mpeg|mp4|ogg|wav|webm)|application\/pdf)$/i.test(asset.mime_type || "");
+  res.set({
+    "Content-Type": asset.mime_type || "application/octet-stream",
+    "Content-Length": String(asset.size),
+    "Cache-Control": "private, max-age=3600",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Disposition": `${safeInlineType ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(asset.file_name || "file")}`,
+  });
+  res.send(asset.data);
+});
+
 app.put("/api/course", loadSessionAccount, requireStaff, async (req, res) => {
   if (!Array.isArray(req.body?.structure)) return res.status(400).json({ error: "STRUCTURE_REQUIRED" });
   const settings = req.body?.settings && typeof req.body.settings === "object" ? req.body.settings : {};
@@ -236,6 +268,7 @@ async function ensureSchema() {
     ALTER TABLE accounts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
     CREATE TABLE IF NOT EXISTS course_documents (id INTEGER PRIMARY KEY CHECK(id=1),structure JSONB NOT NULL DEFAULT '[]'::jsonb,settings JSONB NOT NULL DEFAULT '{}'::jsonb,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS account_progress (account_id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,progress JSONB NOT NULL DEFAULT '{}'::jsonb,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS lesson_assets (id TEXT PRIMARY KEY,file_name TEXT NOT NULL,mime_type TEXT NOT NULL,data BYTEA NOT NULL,size INTEGER NOT NULL,uploaded_by UUID REFERENCES accounts(id) ON DELETE SET NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS legal_consents (id UUID PRIMARY KEY,account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,anonymized_account_id UUID,document_type TEXT NOT NULL,document_version TEXT NOT NULL,accepted BOOLEAN NOT NULL DEFAULT TRUE,accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     DROP INDEX IF EXISTS legal_consents_active_unique;
     CREATE UNIQUE INDEX IF NOT EXISTS legal_consents_account_document_unique ON legal_consents(account_id,document_type,document_version);
